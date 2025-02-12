@@ -19,6 +19,8 @@ from atproto_client import exceptions
 
 REQUEST_LIMIT = 3000
 TIME_WINDOW = 300
+# API_TIMEOUT = TIME_WINDOW / REQUEST_LIMIT / 1000
+API_TIMEOUT = 1
 
 ### PARSER SETUP ###
 
@@ -71,7 +73,7 @@ parser.add_argument(
     "--range",
     type=str,
     default="hours=1",
-    help="date/time range for scraper",
+    help="date/time range for scraper (days, seconds, microseconds, milliseconds, minutes, hours, weeks)",
 )
 args = parser.parse_args()
 
@@ -163,26 +165,104 @@ def analyze_sentiment(text):
 async def analyze_context(session, text, model=MODEL_NAME):
     """Asynchronously call the LM Studio chat completion API with the provided messages."""
     headers = {"Content-Type": "application/json"}
-    prompt = (
-        f"Your task is to determine if the input text is about {KEYWORD_CONTEXT}. Be as generous as possible in interpreting the context.",
-        f"Return only 'yes' if the text is about {KEYWORD_CONTEXT}.",
-        f"If the text is not about {KEYWORD_CONTEXT}, return a one to two-word summary of its topic.",
-    )
     messages = [
         {
             "role": "system",
-            "content": "You are a helpful and precise research assistant.",
+            "content": " ".join(
+                (
+                    f"You are an AI assistant that is tasked with determining if the word {KEYWORD} in a body of text is about {KEYWORD_CONTEXT}.",
+                    f"The text is related if it is about {KEYWORD_CONTEXT} in any way.",
+                    f"Return only 'yes' if the text is about {KEYWORD_CONTEXT}.",
+                    f"Return only 'no' if the text is not about {KEYWORD_CONTEXT}.",
+                )
+            ),
         },
-        {"role": "user", "content": f"Input text: {text}\n\n{prompt}"},
+        {"role": "user", "content": f"{text}"},
     ]
     payload = {"model": model, "messages": messages}
 
+    llm_res = ""
     try:
         async with session.post(LMSTUDIO_URL, headers=headers, json=payload) as resp:
             if resp.status == 200:
                 result = await resp.json()
                 try:
-                    return result["choices"][0]["message"]["content"].replace("\n", " ")
+                    llm_res = result["choices"][0]["message"]["content"].replace(
+                        "\n", " "
+                    )
+                    if "yes" in llm_res or KEYWORD in llm_res:
+                        return llm_res
+                except (KeyError, IndexError):
+                    logging.error("Unexpected LM Studio response structure: %s", result)
+                    return None
+            else:
+                text = await resp.text()
+                logging.error("LM Studio API error: %s - %s", resp.status, text)
+                return None
+    except Exception as e:
+        logging.error("Error calling LM Studio: %s", e)
+        return None
+
+    messages = [
+        {
+            "role": "system",
+            "content": "You are an AI assistant that is tasked with writing a one to two word description of what the input text is saying",
+        },
+        {"role": "user", "content": f"{text}"},
+    ]
+    payload = {"model": model, "messages": messages}
+
+    llm_res2 = ""
+    try:
+        async with session.post(LMSTUDIO_URL, headers=headers, json=payload) as resp:
+            if resp.status == 200:
+                result = await resp.json()
+                try:
+                    llm_res2 = result["choices"][0]["message"]["content"].replace(
+                        "\n", " "
+                    )
+                except (KeyError, IndexError):
+                    logging.error("Unexpected LM Studio response structure: %s", result)
+                    return None
+            else:
+                text = await resp.text()
+                logging.error("LM Studio API error: %s - %s", resp.status, text)
+                return None
+    except Exception as e:
+        logging.error("Error calling LM Studio: %s", e)
+        return None
+
+    messages = [
+        {
+            "role": "system",
+            "content": "You are a helpful and precise research assistant.",
+        },
+        {
+            "role": "user",
+            "content": " ".join(
+                (
+                    f"You are an AI assistant that is tasked with determining if the word {KEYWORD} is related to {llm_res2}.",
+                    f"The text is related if it is about {KEYWORD_CONTEXT} in any way.",
+                    f"Return only 'yes' if the text is about {KEYWORD_CONTEXT}.",
+                    f"Return only 'no' if the text is not about {KEYWORD_CONTEXT}.",
+                )
+            ),
+        },
+    ]
+    payload = {"model": model, "messages": messages}
+
+    llm_res3 = ""
+    try:
+        async with session.post(LMSTUDIO_URL, headers=headers, json=payload) as resp:
+            if resp.status == 200:
+                result = await resp.json()
+                try:
+                    llm_res3 = result["choices"][0]["message"]["content"].replace(
+                        "\n", " "
+                    )
+                    if "yes" in llm_res3 or KEYWORD in llm_res3:
+                        return llm_res3
+                    return llm_res2
                 except (KeyError, IndexError):
                     logging.error("Unexpected LM Studio response structure: %s", result)
                     return None
@@ -215,7 +295,6 @@ def save_post(post_id, author, handle, timestamp, text, sentiment, relevant):
 async def fetch_posts(client, queue):
     """Fetches posts continuously and adds them to the queue."""
     cursor = None
-    interval = TIME_WINDOW / REQUEST_LIMIT
     while True:
         try:
             response = await client.app.bsky.feed.search_posts(
@@ -238,7 +317,7 @@ async def fetch_posts(client, queue):
             logging.debug("Mysterious aspect ratio error: %s", e)
         except Exception as e:
             logging.error("Error fetching posts: %s", e)
-        await asyncio.sleep(interval)
+        await asyncio.sleep(API_TIMEOUT)
 
 
 async def process_posts(session, queue):
@@ -265,22 +344,24 @@ async def process_posts(session, queue):
             relevant = relevant.lower()
             if "yes" in relevant or KEYWORD in relevant:
                 logging.info(
-                    "[%s] %s (%s): %.50s... [Relevant, Sentiment: %f]",
+                    "[%s][Relevant, Sentiment: %f] %s (%s): \n%.150s"
+                    + ("..." if len(text) > 150 else ""),
                     timestamp,
+                    sentiment,
                     author,
                     handle,
                     text.replace("\n", " "),
-                    sentiment,
                 )
                 relevant = 1
             else:
                 logging.info(
-                    "[%s] %s (%s): %.50s... [Not relevant, Topic: %s]",
+                    "[%s][Not relevant, Topic: %s] %s (%s): \n%.150s"
+                    + ("..." if len(text) > 150 else ""),
                     timestamp,
+                    relevant,
                     author,
                     handle,
                     text.replace("\n", " "),
-                    relevant,
                 )
                 relevant = 0
             save_post(post_id, author, handle, timestamp, text, sentiment, relevant)
