@@ -31,12 +31,11 @@ parser.add_argument(
     "-h", "--help", action="help", default=argparse.SUPPRESS, help="show help and exit"
 )
 parser.add_argument("-q", "--query", type=str, required=True, help="the search query")
-TVOQ = "The value of QUERY"
 parser.add_argument(
     "-x",
     "--context",
     type=str,
-    default=TVOQ,
+    default="The value of QUERY",
     help="additional query context to help the LLM",
 )
 parser.add_argument(
@@ -61,6 +60,13 @@ parser.add_argument(
     help="config file",
 )
 parser.add_argument(
+    "-d",
+    "--db",
+    type=str,
+    default="posts-QUERY.db",
+    help="config file",
+)
+parser.add_argument(
     "-r",
     "--range",
     type=str,
@@ -72,8 +78,10 @@ args = parser.parse_args()
 ### ARGUMENT-BASED GLOBAL VARIABLES ###
 
 KEYWORD = str(args.query).lower()
-KEYWORD_CONTEXT = KEYWORD if args.context == TVOQ else args.context
-DB_NAME = f'posts-{KEYWORD.replace(" ", "-")}.db'
+KEYWORD_CONTEXT = KEYWORD if args.context == "The value of QUERY" else args.context
+DB_NAME = (
+    f'posts-{KEYWORD.replace(" ", "-")}.db' if args.db == "posts-QUERY.db" else args.db
+)
 try:
     LEVELS = {
         "debug": logging.DEBUG,
