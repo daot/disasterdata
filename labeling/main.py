@@ -64,7 +64,7 @@ parser.add_argument(
     "--db",
     type=str,
     default="posts-QUERY.db",
-    help="config file",
+    help="db location",
 )
 parser.add_argument(
     "-r",
