@@ -60,6 +60,13 @@ parser.add_argument(
     default="config.yaml",
     help="config file",
 )
+parser.add_argument(
+    "-r",
+    "--range",
+    type=str,
+    default="hours=1",
+    help="date/time range for scraper",
+)
 args = parser.parse_args()
 
 ### ARGUMENT-BASED GLOBAL VARIABLES ###
@@ -80,6 +87,7 @@ except KeyError:
     logging.error("Invalid log level")
     exit()
 LOG_FILE = args.log
+TIMEDELTA = {args.range.split("=")[0]: float(args.range.split("=")[1])}
 
 ### READ CONFIG VALUES ###
 
@@ -206,7 +214,7 @@ async def fetch_posts(client, queue):
                 {
                     "q": KEYWORD,
                     "sort": "latest",
-                    "since": (datetime.utcnow() - timedelta(hours=1)).strftime(
+                    "since": (datetime.utcnow() - timedelta(**TIMEDELTA)).strftime(
                         "%Y-%m-%dT%H:%M:%SZ"
                     ),
                     "cursor": cursor,
