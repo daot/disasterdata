@@ -3,3 +3,4 @@ aiohttp
 python-dateutil
 atproto
 textblob
+pyyaml

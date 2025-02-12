@@ -4,16 +4,23 @@ import sqlite3
 import sys
 import dateutil.parser
 import argparse
+import logging
+import yaml
+import os
 from datetime import datetime, timedelta
 from atproto import AsyncClient
 from textblob import TextBlob
-from argparse import (
-    ArgumentDefaultsHelpFormatter,
-    ArgumentParser,
-    ArgumentTypeError,
-    Namespace,
-)
+from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
+from pprint import pprint
+from urllib.parse import urljoin
+from atproto_client import exceptions
 
+### GLOBAL VARS ###
+
+REQUEST_LIMIT = 3000
+TIME_WINDOW = 300
+
+### PARSER SETUP ###
 
 parser = ArgumentParser(
     formatter_class=ArgumentDefaultsHelpFormatter,
@@ -24,20 +31,87 @@ parser.add_argument(
     "-h", "--help", action="help", default=argparse.SUPPRESS, help="show help and exit"
 )
 parser.add_argument("-q", "--query", type=str, required=True, help="the search query")
+TVOQ = "The value of QUERY"
 parser.add_argument(
-    "-c", "--context", type=str, required=True, help="the search query context"
+    "-x",
+    "--context",
+    type=str,
+    default=TVOQ,
+    help="additional query context to help the LLM",
+)
+parser.add_argument(
+    "-l",
+    "--log",
+    type=str,
+    default="runtime.log",
+    help="log file",
+)
+parser.add_argument(
+    "-ll",
+    "--loglevel",
+    type=str,
+    default="info",
+    help="log level (debug, info, warning, error, critical)",
+)
+parser.add_argument(
+    "-c",
+    "--config",
+    type=str,
+    default="config.yaml",
+    help="config file",
 )
 args = parser.parse_args()
 
-BSKY_USER = ""
-BSKY_PASS = ""
+### ARGUMENT-BASED GLOBAL VARIABLES ###
+
 KEYWORD = str(args.query).lower()
-KEYWORD_CONTEXT = args.context
-REQUEST_LIMIT = 3000
-TIME_WINDOW = 300
+KEYWORD_CONTEXT = KEYWORD if args.context == TVOQ else args.context
 DB_NAME = f'posts-{KEYWORD.replace(" ", "-")}.db'
-LMSTUDIO_URL = "http://127.0.0.1:1234/v1/chat/completions"
-DEFAULT_MODEL = "qwen2.5-7b-instruct-1m"
+try:
+    LEVELS = {
+        "debug": logging.DEBUG,
+        "info": logging.INFO,
+        "warning": logging.WARNING,
+        "error": logging.ERROR,
+        "critical": logging.CRITICAL,
+    }
+    LOGLEVEL = LEVELS[args.loglevel.lower()]
+except KeyError:
+    logging.error("Invalid log level")
+    exit()
+LOG_FILE = args.log
+
+### READ CONFIG VALUES ###
+
+if not os.path.exists(args.config):
+    logging.error("No config file found")
+    create = input(f"Create {args.config} y/n: ").lower()
+    if create == "y":
+        with open(args.config, "w") as file:
+            file.write("user:\npass:")
+    exit()
+with open(args.config, "r") as file:
+    config = yaml.safe_load(file)
+
+BSKY_USER = config.get("user", "")
+BSKY_PASS = config.get("pass", "")
+LMSTUDIO_URL = config.get("host", "http://127.0.0.1:1234") + "/v1/chat/completions"
+MODEL_NAME = config.get("model", "qwen2.5-7b-instruct-1m")
+
+### LOGGING SETUP ###
+
+logging.getLogger().setLevel(LOGLEVEL)
+logging.basicConfig(
+    level=LOGLEVEL,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.FileHandler(LOG_FILE, encoding="utf-8"),
+        logging.StreamHandler(sys.stdout),
+    ],
+)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+
+### DB SETUP ###
 
 DB = sqlite3.connect(DB_NAME)
 CURSOR = DB.cursor()
@@ -45,6 +119,7 @@ CURSOR = DB.cursor()
 
 def init_db():
     """Initializes the SQLite database and creates the necessary table."""
+    logging.info("Initializing database.")
     CURSOR.execute(
         """
         CREATE TABLE IF NOT EXISTS posts (
@@ -54,31 +129,28 @@ def init_db():
             timestamp TEXT,
             text TEXT,
             sentiment FLOAT,
-            related BOOL
+            relevant BOOL
         )
         """
     )
     DB.commit()
+    logging.info("Database initialized successfully.")
 
 
 def analyze_sentiment(text):
-    """Analyzes the sentiment of the text and returns decimal value"""
+    """Analyzes the sentiment of the text and returns decimal value."""
     blob = TextBlob(text)
     polarity = blob.sentiment.polarity
     return polarity
 
 
-async def analyze_context(session, text, model=DEFAULT_MODEL):
-    """
-    Asynchronously call the LM Studio chat completion API with the provided messages.
-    Returns the content of the assistant's reply.
-    """
-    headers = {
-        "Content-Type": "application/json",
-    }
+async def analyze_context(session, text, model=MODEL_NAME):
+    """Asynchronously call the LM Studio chat completion API with the provided messages."""
+    headers = {"Content-Type": "application/json"}
     prompt = (
-        f"Your task is to determine if the input text is about {KEYWORD_CONTEXT}. This topic may be broad don't be too careful",
-        f"Return only yes if it is about {KEYWORD_CONTEXT}. IF IT IS NOT ABOUT {KEYWORD_CONTEXT}, return a one or two word summary about what the text is about",
+        f"Your task is to determine if the input text is about {KEYWORD_CONTEXT}. Be as generous as possible in interpreting the context.",
+        f"Return only 'yes' if the text is about {KEYWORD_CONTEXT}.",
+        f"If the text is not about {KEYWORD_CONTEXT}, return a one to two-word summary of its topic.",
     )
     messages = [
         {
@@ -88,34 +160,40 @@ async def analyze_context(session, text, model=DEFAULT_MODEL):
         {"role": "user", "content": f"Input text: {text}\n\n{prompt}"},
     ]
     payload = {"model": model, "messages": messages}
+
     try:
         async with session.post(LMSTUDIO_URL, headers=headers, json=payload) as resp:
             if resp.status == 200:
                 result = await resp.json()
                 try:
                     return result["choices"][0]["message"]["content"].replace("\n", " ")
-                except (KeyError, IndexError) as e:
-                    print("Unexpected OpenRouter response structure:", result)
+                except (KeyError, IndexError):
+                    logging.error("Unexpected LM Studio response structure: %s", result)
                     return None
             else:
                 text = await resp.text()
-                print(f"OpenRouter API error: {resp.status} - {text}")
+                logging.error("LM Studio API error: %s - %s", resp.status, text)
                 return None
     except Exception as e:
-        print("Error calling OpenRouter:", e)
+        logging.error("Error calling LM Studio: %s", e)
         return None
 
 
-def save_post(post_id, author, handle, timestamp, text, sentiment, related):
+def save_post(post_id, author, handle, timestamp, text, sentiment, relevant):
     """Saves a post into the database if it does not already exist."""
     try:
         CURSOR.execute(
-            "INSERT INTO posts (id, author, handle, timestamp, text, sentiment, related) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (post_id, author, handle, timestamp, text, sentiment, related),
+            "INSERT INTO posts (id, author, handle, timestamp, text, sentiment, relevant) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (post_id, author, handle, timestamp, text, sentiment, relevant),
         )
         DB.commit()
+        logging.debug(
+            "Saved post from %s to db",
+            post_id,
+        )
     except sqlite3.IntegrityError:
-        pass  # Ignore duplicate posts
+        logging.info("Duplicate post ignored: %s", post_id)
+        pass
 
 
 async def fetch_posts(client, queue):
@@ -139,8 +217,11 @@ async def fetch_posts(client, queue):
                 for post in response.posts:
                     await queue.put(post)
                 cursor = response.cursor if hasattr(response, "cursor") else None
+                logging.debug("Fetched %d posts.", len(response.posts))
+        except exceptions.ModelError as e:
+            logging.debug("Mysterious aspect ratio error: %s", e)
         except Exception as e:
-            print(f"Error fetching posts: {e}")
+            logging.error("Error fetching posts: %s", e)
         await asyncio.sleep(interval)
 
 
@@ -148,7 +229,7 @@ async def process_posts(session, queue):
     """Processes and saves posts from the queue."""
     while True:
         post = await queue.get()
-        post_id = post.uri  # Unique identifier for the post
+        post_id = post.uri
         timestamp = dateutil.parser.parse(
             post.record.created_at, fuzzy=True
         ).isoformat()
@@ -157,43 +238,50 @@ async def process_posts(session, queue):
         handle = post.author.handle
 
         res = CURSOR.execute(
-            "SELECT EXISTS (SELECT 1 FROM posts WHERE id = (?))",
-            (post_id,),
+            "SELECT EXISTS (SELECT 1 FROM posts WHERE id = (?))", (post_id,)
         )
         DB.commit()
         fetch = res.fetchone()[0]
 
         if not fetch:
-            # Perform sentiment analysis on the post's text
             sentiment = analyze_sentiment(text)
-            related = await analyze_context(session, text)
-            related = related.lower()
-            if "yes" in related or KEYWORD in related:
-                print(
-                    f"[{timestamp}] {author} ({handle}): "
-                    + text[:50].replace("\n", " ")
-                    + f"... Sentiment: {sentiment}"
+            relevant = await analyze_context(session, text)
+            relevant = relevant.lower()
+            if "yes" in relevant or KEYWORD in relevant:
+                logging.info(
+                    "[%s] %s (%s): %.50s... [Relevant, Sentiment: %f]",
+                    timestamp,
+                    author,
+                    handle,
+                    text.replace("\n", " "),
+                    sentiment,
                 )
-                related = 1
+                relevant = 1
             else:
-                print(
-                    f"Post unrelated to keyword: [{timestamp}] {author} ({handle}): "
-                    + text.replace("\n", " ")
-                    + f"... Topic: {related}"
+                logging.info(
+                    "[%s] %s (%s): %.50s... [Not relevant, Topic: %s]",
+                    timestamp,
+                    author,
+                    handle,
+                    text.replace("\n", " "),
+                    relevant,
                 )
-                related = 0
-
-            save_post(post_id, author, handle, timestamp, text, sentiment, related)
+                relevant = 0
+            save_post(post_id, author, handle, timestamp, text, sentiment, relevant)
         queue.task_done()
 
 
 async def main():
+    logging.info("Starting Bluesky monitoring script.")
     async with aiohttp.ClientSession() as session:
         init_db()
         client = AsyncClient()
-        await client.login(BSKY_USER, BSKY_PASS)
+        try:
+            await client.login(BSKY_USER, BSKY_PASS)
+        except ValueError:
+            logging.error("Username or password is incorrect")
+            exit()
         queue = asyncio.Queue()
-
         await asyncio.gather(fetch_posts(client, queue), process_posts(session, queue))
 
 
