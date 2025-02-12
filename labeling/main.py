@@ -21,124 +21,90 @@ REQUEST_LIMIT = 3000
 TIME_WINDOW = 300
 # API_TIMEOUT = TIME_WINDOW / REQUEST_LIMIT / 1000
 API_TIMEOUT = 1
-
-### PARSER SETUP ###
-
-parser = ArgumentParser(
-    formatter_class=ArgumentDefaultsHelpFormatter,
-    add_help=False,
-    description="Monitors Bluesky for a keyword.",
-)
-parser.add_argument(
-    "-h", "--help", action="help", default=argparse.SUPPRESS, help="show help and exit"
-)
-parser.add_argument("-q", "--query", type=str, required=True, help="the search query")
-parser.add_argument(
-    "-x",
-    "--context",
-    type=str,
-    default="The value of QUERY",
-    help="additional query context to help the LLM",
-)
-parser.add_argument(
-    "-l",
-    "--log",
-    type=str,
-    default="runtime.log",
-    help="log file",
-)
-parser.add_argument(
-    "-ll",
-    "--loglevel",
-    type=str,
-    default="info",
-    help="log level (debug, info, warning, error, critical)",
-)
-parser.add_argument(
-    "-c",
-    "--config",
-    type=str,
-    default="config.yaml",
-    help="config file",
-)
-parser.add_argument(
-    "-d",
-    "--db",
-    type=str,
-    default="posts-QUERY.db",
-    help="db location",
-)
-parser.add_argument(
-    "-r",
-    "--range",
-    type=str,
-    default="hours=1",
-    help="date/time range for scraper (days, seconds, microseconds, milliseconds, minutes, hours, weeks)",
-)
-args = parser.parse_args()
-
-### ARGUMENT-BASED GLOBAL VARIABLES ###
-
-KEYWORD = str(args.query).lower()
-KEYWORD_CONTEXT = KEYWORD if args.context == "The value of QUERY" else args.context
-DB_NAME = (
-    f'posts-{KEYWORD.replace(" ", "-")}.db' if args.db == "posts-QUERY.db" else args.db
-)
-try:
-    LEVELS = {
-        "debug": logging.DEBUG,
-        "info": logging.INFO,
-        "warning": logging.WARNING,
-        "error": logging.ERROR,
-        "critical": logging.CRITICAL,
-    }
-    LOGLEVEL = LEVELS[args.loglevel.lower()]
-except KeyError:
-    logging.error("Invalid log level")
-    exit()
-LOG_FILE = args.log
-TIMEDELTA = {args.range.split("=")[0]: float(args.range.split("=")[1])}
-
-### READ CONFIG VALUES ###
-
-if not os.path.exists(args.config):
-    logging.error("No config file found")
-    create = input(f"Create {args.config} y/n: ").lower()
-    if create == "y":
-        with open(args.config, "w") as file:
-            file.write("user:\npass:")
-    exit()
-with open(args.config, "r") as file:
-    config = yaml.safe_load(file)
-
-BSKY_USER = config.get("user", "")
-BSKY_PASS = config.get("pass", "")
-LMSTUDIO_URL = config.get("host", "http://127.0.0.1:1234") + "/v1/chat/completions"
-MODEL_NAME = config.get("model", "qwen2.5-7b-instruct-1m")
-
-### LOGGING SETUP ###
-
-logging.getLogger().setLevel(LOGLEVEL)
-logging.basicConfig(
-    level=LOGLEVEL,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.FileHandler(LOG_FILE, encoding="utf-8"),
-        logging.StreamHandler(sys.stdout),
-    ],
-)
-logging.getLogger("httpx").setLevel(logging.WARNING)
-
-### DB SETUP ###
-
-DB = sqlite3.connect(DB_NAME)
-CURSOR = DB.cursor()
+logger = logging.getLogger(__name__)
 
 
-def init_db():
+def setup_parser():
+    """Reads user options from command line arguments."""
+    parser = ArgumentParser(
+        formatter_class=ArgumentDefaultsHelpFormatter,
+        add_help=False,
+        description="Monitors Bluesky for a keyword.",
+    )
+    parser.add_argument(
+        "-h",
+        "--help",
+        action="help",
+        default=argparse.SUPPRESS,
+        help="show help and exit",
+    )
+    parser.add_argument(
+        "-q", "--query", type=str, required=True, help="the search query"
+    )
+    parser.add_argument(
+        "-x",
+        "--context",
+        type=str,
+        default="The value of QUERY",
+        help="additional query context to help the LLM",
+    )
+    parser.add_argument(
+        "-l",
+        "--log",
+        type=str,
+        default="runtime.log",
+        help="log file",
+    )
+    parser.add_argument(
+        "-ll",
+        "--loglevel",
+        type=str,
+        default="info",
+        help="log level (debug, info, warning, error, critical)",
+    )
+    parser.add_argument(
+        "-c",
+        "--config",
+        type=str,
+        default="config.yaml",
+        help="config file",
+    )
+    parser.add_argument(
+        "-d",
+        "--db",
+        type=str,
+        default="posts-QUERY.db",
+        help="db location",
+    )
+    parser.add_argument(
+        "-r",
+        "--range",
+        type=str,
+        default="hours=1",
+        help="date/time range for scraper (days, seconds, microseconds, milliseconds, minutes, hours, weeks)",
+    )
+    return parser.parse_args()
+
+
+def load_config(config_file):
+    """Reads user options in config file."""
+    if not os.path.exists(config_file):
+        logger.error("No config file found")
+        create = input(f"Create {config_file} y/n: ").lower()
+        if create == "y":
+            with open(config_file, "w") as file:
+                file.write("user:\npass:")
+        exit()
+    with open(config_file, "r") as file:
+        return yaml.safe_load(file)
+
+
+def init_db(db_name):
     """Initializes the SQLite database and creates the necessary table."""
-    logging.info("Initializing database.")
-    CURSOR.execute(
+    logger.info("Initializing database.")
+    db = sqlite3.connect(db_name)
+    cursor = db.cursor()
+    cursor.execute(
         """
         CREATE TABLE IF NOT EXISTS posts (
             id TEXT PRIMARY KEY,
@@ -151,8 +117,9 @@ def init_db():
         )
         """
     )
-    DB.commit()
-    logging.info("Database initialized successfully.")
+    db.commit()
+    logger.info("Database initialized successfully.")
+    return db, cursor
 
 
 def analyze_sentiment(text):
@@ -162,7 +129,7 @@ def analyze_sentiment(text):
     return polarity
 
 
-async def analyze_context(session, text, model=MODEL_NAME):
+async def analyze_context(session, url, text, keyword, keyword_context, model):
     """Asynchronously call the LM Studio chat completion API with the provided messages."""
     headers = {"Content-Type": "application/json"}
     messages = [
@@ -170,10 +137,10 @@ async def analyze_context(session, text, model=MODEL_NAME):
             "role": "system",
             "content": " ".join(
                 (
-                    f"You are an AI assistant that is tasked with determining if the word {KEYWORD} in a body of text is about {KEYWORD_CONTEXT}.",
-                    f"The text is related if it is about {KEYWORD_CONTEXT} in any way.",
-                    f"Return only 'yes' if the text is about {KEYWORD_CONTEXT}.",
-                    f"Return only 'no' if the text is not about {KEYWORD_CONTEXT}.",
+                    f"You are an AI assistant that is tasked with determining if the word {keyword} in a body of text is about {keyword_context}.",
+                    f"The text is related if it is about {keyword_context} in any way.",
+                    f"Return only 'yes' if the text is about {keyword_context}.",
+                    f"Return only 'no' if the text is not about {keyword_context}.",
                 )
             ),
         },
@@ -183,24 +150,24 @@ async def analyze_context(session, text, model=MODEL_NAME):
 
     llm_res = ""
     try:
-        async with session.post(LMSTUDIO_URL, headers=headers, json=payload) as resp:
+        async with session.post(url, headers=headers, json=payload) as resp:
             if resp.status == 200:
                 result = await resp.json()
                 try:
                     llm_res = result["choices"][0]["message"]["content"].replace(
                         "\n", " "
                     )
-                    if "yes" in llm_res or KEYWORD in llm_res:
+                    if "yes" in llm_res or keyword in llm_res:
                         return llm_res
                 except (KeyError, IndexError):
-                    logging.error("Unexpected LM Studio response structure: %s", result)
+                    logger.error("Unexpected LM Studio response structure: %s", result)
                     return None
             else:
                 text = await resp.text()
-                logging.error("LM Studio API error: %s - %s", resp.status, text)
+                logger.error("LM Studio API error: %s - %s", resp.status, text)
                 return None
     except Exception as e:
-        logging.error("Error calling LM Studio: %s", e)
+        logger.error("Error calling LM Studio: %s", e)
         return None
 
     messages = [
@@ -214,7 +181,7 @@ async def analyze_context(session, text, model=MODEL_NAME):
 
     llm_res2 = ""
     try:
-        async with session.post(LMSTUDIO_URL, headers=headers, json=payload) as resp:
+        async with session.post(url, headers=headers, json=payload) as resp:
             if resp.status == 200:
                 result = await resp.json()
                 try:
@@ -222,14 +189,14 @@ async def analyze_context(session, text, model=MODEL_NAME):
                         "\n", " "
                     )
                 except (KeyError, IndexError):
-                    logging.error("Unexpected LM Studio response structure: %s", result)
+                    logger.error("Unexpected LM Studio response structure: %s", result)
                     return None
             else:
                 text = await resp.text()
-                logging.error("LM Studio API error: %s - %s", resp.status, text)
+                logger.error("LM Studio API error: %s - %s", resp.status, text)
                 return None
     except Exception as e:
-        logging.error("Error calling LM Studio: %s", e)
+        logger.error("Error calling LM Studio: %s", e)
         return None
 
     messages = [
@@ -241,10 +208,10 @@ async def analyze_context(session, text, model=MODEL_NAME):
             "role": "user",
             "content": " ".join(
                 (
-                    f"You are an AI assistant that is tasked with determining if the word {KEYWORD} is related to {llm_res2}.",
-                    f"The text is related if it is about {KEYWORD_CONTEXT} in any way.",
-                    f"Return only 'yes' if the text is about {KEYWORD_CONTEXT}.",
-                    f"Return only 'no' if the text is not about {KEYWORD_CONTEXT}.",
+                    f"You are an AI assistant that is tasked with determining if the word {keyword} is related to {llm_res2}.",
+                    f"The text is related if it is about {keyword_context} in any way.",
+                    f"Return only 'yes' if the text is about {keyword_context}.",
+                    f"Return only 'no' if the text is not about {keyword_context}.",
                 )
             ),
         },
@@ -253,55 +220,57 @@ async def analyze_context(session, text, model=MODEL_NAME):
 
     llm_res3 = ""
     try:
-        async with session.post(LMSTUDIO_URL, headers=headers, json=payload) as resp:
+        async with session.post(url, headers=headers, json=payload) as resp:
             if resp.status == 200:
                 result = await resp.json()
                 try:
                     llm_res3 = result["choices"][0]["message"]["content"].replace(
                         "\n", " "
                     )
-                    if "yes" in llm_res3 or KEYWORD in llm_res3:
+                    if "yes" in llm_res3 or keyword in llm_res3:
                         return llm_res3
                     return llm_res2
                 except (KeyError, IndexError):
-                    logging.error("Unexpected LM Studio response structure: %s", result)
+                    logger.error("Unexpected LM Studio response structure: %s", result)
                     return None
             else:
                 text = await resp.text()
-                logging.error("LM Studio API error: %s - %s", resp.status, text)
+                logger.error("LM Studio API error: %s - %s", resp.status, text)
                 return None
     except Exception as e:
-        logging.error("Error calling LM Studio: %s", e)
+        logger.error("Error calling LM Studio: %s", e)
         return None
 
 
-def save_post(post_id, author, handle, timestamp, text, sentiment, relevant):
+def save_post(
+    db, cursor, post_id, author, handle, timestamp, text, sentiment, relevant
+):
     """Saves a post into the database if it does not already exist."""
     try:
-        CURSOR.execute(
+        cursor.execute(
             "INSERT INTO posts (id, author, handle, timestamp, text, sentiment, relevant) VALUES (?, ?, ?, ?, ?, ?, ?)",
             (post_id, author, handle, timestamp, text, sentiment, relevant),
         )
-        DB.commit()
-        logging.debug(
+        db.commit()
+        logger.debug(
             "Saved post from %s to db",
             post_id,
         )
     except sqlite3.IntegrityError:
-        logging.info("Duplicate post ignored: %s", post_id)
+        logger.info("Duplicate post ignored: %s", post_id)
         pass
 
 
-async def fetch_posts(client, queue):
+async def fetch_posts(client, queue, keyword, time_delta):
     """Fetches posts continuously and adds them to the queue."""
     cursor = None
     while True:
         try:
             response = await client.app.bsky.feed.search_posts(
                 {
-                    "q": KEYWORD,
+                    "q": keyword,
                     "sort": "latest",
-                    "since": (datetime.utcnow() - timedelta(**TIMEDELTA)).strftime(
+                    "since": (datetime.utcnow() - timedelta(**time_delta)).strftime(
                         "%Y-%m-%dT%H:%M:%SZ"
                     ),
                     "cursor": cursor,
@@ -312,15 +281,17 @@ async def fetch_posts(client, queue):
                 for post in response.posts:
                     await queue.put(post)
                 cursor = response.cursor if hasattr(response, "cursor") else None
-                logging.debug("Fetched %d posts.", len(response.posts))
+                logger.debug("Fetched %d posts.", len(response.posts))
         except exceptions.ModelError as e:
-            logging.debug("Mysterious aspect ratio error: %s", e)
+            logger.debug("Mysterious aspect ratio error: %s", e)
         except Exception as e:
-            logging.error("Error fetching posts: %s", e)
+            logger.error("Error fetching posts: %s", e)
         await asyncio.sleep(API_TIMEOUT)
 
 
-async def process_posts(session, queue):
+async def process_posts(
+    db, cursor, session, queue, keyword, keyword_context, lmstudio_url, model
+):
     """Processes and saves posts from the queue."""
     while True:
         post = await queue.get()
@@ -332,54 +303,111 @@ async def process_posts(session, queue):
         author = post.author.display_name
         handle = post.author.handle
 
-        res = CURSOR.execute(
+        if not cursor.execute(
             "SELECT EXISTS (SELECT 1 FROM posts WHERE id = (?))", (post_id,)
-        )
-        DB.commit()
-        fetch = res.fetchone()[0]
-
-        if not fetch:
+        ).fetchone()[0]:
             sentiment = analyze_sentiment(text)
-            relevant = await analyze_context(session, text)
-            relevant = relevant.lower()
-            if "yes" in relevant or KEYWORD in relevant:
-                logging.info(
-                    "[%s][Relevant, Sentiment: %f] %s (%s): \n%.150s"
-                    + ("..." if len(text) > 150 else ""),
-                    timestamp,
-                    sentiment,
-                    author,
-                    handle,
-                    text.replace("\n", " "),
+            relevant_text = (
+                await analyze_context(
+                    session, lmstudio_url, text, keyword, keyword_context, model
                 )
-                relevant = 1
-            else:
-                logging.info(
-                    "[%s][Not relevant, Topic: %s] %s (%s): \n%.150s"
-                    + ("..." if len(text) > 150 else ""),
-                    timestamp,
-                    relevant,
-                    author,
-                    handle,
-                    text.replace("\n", " "),
-                )
-                relevant = 0
-            save_post(post_id, author, handle, timestamp, text, sentiment, relevant)
+            ).lower()
+            relevant = 1 if "yes" in relevant_text or keyword in relevant_text else 0
+            logger.info(
+                "[%s]%s[%sRelevant, %s: %s] %s (%s): \n%.150s%s",
+                timestamp,
+                "+" if relevant else "-",
+                "" if relevant else "Not ",
+                "Sentiment" if relevant else "Topic",
+                sentiment if relevant else relevant_text,
+                author,
+                handle,
+                text.replace("\n", " "),
+                ("..." if len(text) > 150 else ""),
+            )
+            save_post(
+                db,
+                cursor,
+                post_id,
+                author,
+                handle,
+                timestamp,
+                text,
+                sentiment,
+                relevant,
+            )
         queue.task_done()
 
 
 async def main():
-    logging.info("Starting Bluesky monitoring script.")
+    logger.info("Starting Bluesky monitoring script.")
+
+    args = setup_parser()
+    config = load_config(args.config)
+
+    keyword = str(args.query).lower()
+    keyword_context = keyword if args.context == "The value of QUERY" else args.context
+
+    try:
+        levels = {
+            "debug": logging.DEBUG,
+            "info": logging.INFO,
+            "warning": logging.WARNING,
+            "error": logging.ERROR,
+            "critical": logging.CRITICAL,
+        }
+        loglevel = levels[args.loglevel.lower()]
+    except KeyError:
+        logger.error("Invalid log level")
+        exit()
+    logger.setLevel(loglevel)
+    logging.basicConfig(
+        level=loglevel,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        handlers=[
+            logging.FileHandler(args.log, encoding="utf-8"),
+            logging.StreamHandler(sys.stdout),
+        ],
+    )
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+
+    db_name = (
+        f'posts-{keyword.replace(" ", "-")}.db'
+        if args.db == "posts-QUERY.db"
+        else args.db
+    )
+    db, cursor = init_db(db_name)
+
+    host = config.get("host", "http://127.0.0.1:1234")
+    lmstudio_url = (host[:-1] if host[-1] == "/" else host) + "/v1/chat/completions"
+
+    client = AsyncClient()
+    try:
+        await client.login(config.get("user", ""), config.get("pass", ""))
+    except ValueError:
+        logger.error("Username or password is incorrect")
+        exit()
+
+    queue = asyncio.Queue()
     async with aiohttp.ClientSession() as session:
-        init_db()
-        client = AsyncClient()
-        try:
-            await client.login(BSKY_USER, BSKY_PASS)
-        except ValueError:
-            logging.error("Username or password is incorrect")
-            exit()
-        queue = asyncio.Queue()
-        await asyncio.gather(fetch_posts(client, queue), process_posts(session, queue))
+        await asyncio.gather(
+            fetch_posts(
+                client,
+                queue,
+                keyword,
+                time_delta={args.range.split("=")[0]: float(args.range.split("=")[1])},
+            ),
+            process_posts(
+                db,
+                cursor,
+                session,
+                queue,
+                keyword,
+                keyword_context,
+                lmstudio_url,
+                model=config.get("model", "maziyarpanahi/qwen2.5-7b-instruct"),
+            ),
+        )
 
 
 if __name__ == "__main__":
