@@ -3,10 +3,13 @@ from flask import Flask, jsonify
 
 app = Flask(__name__)
 
+
+searchword = input("Enter a searchword:")
+
 @app.route('/', methods=['GET'])
 def search_posts():
     # Set the search word directly in the code
-    searchword = 'fire'  # Example of a hardcoded search term
+    #searchword = 'fire'  # Example of a hardcoded search term
 
     # Log the search word or print it for debugging
     print(f"Search word: {searchword}")  # This will log the search word in the console
@@ -24,7 +27,7 @@ def search_posts():
 
         # Return the data received from the external API to the client, along with the search word
         return jsonify({'searchword': searchword, 'data': data})
-
+        
     except requests.exceptions.RequestException as e:
         # Handle errors and return a message with the error
         return jsonify({'error': str(e)}), 500  # Return an HTTP 500 error with the error message
