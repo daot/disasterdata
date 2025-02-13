@@ -1,12 +1,15 @@
 import requests
-from flask import Flask, request, jsonify
+from flask import Flask, jsonify
 
 app = Flask(__name__)
 
-@app.route('/search', methods=['GET'])
+@app.route('/', methods=['GET'])
 def search_posts():
-    # Get the search term (query) from the URL parameters
-    searchword = request.args.get('searchword', '')  # Default to empty string if not provided
+    # Set the search word directly in the code
+    searchword = 'fire'  # Example of a hardcoded search term
+
+    # Log the search word or print it for debugging
+    print(f"Search word: {searchword}")  # This will log the search word in the console
 
     # Prepare the payload with the correct parameter 'q'
     params = {'q': searchword}  # Use params instead of json for GET requests
@@ -19,8 +22,8 @@ def search_posts():
         # Parse the JSON response from the API
         data = response.json()
 
-        # Return the data received from the external API to the client
-        return jsonify(data)
+        # Return the data received from the external API to the client, along with the search word
+        return jsonify({'searchword': searchword, 'data': data})
 
     except requests.exceptions.RequestException as e:
         # Handle errors and return a message with the error
@@ -28,5 +31,11 @@ def search_posts():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
+
+
+
+
+
 
 
