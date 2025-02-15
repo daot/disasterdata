@@ -3,7 +3,10 @@ import logging
 import argparse
 import sys
 import json
+import os
 from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser
+import pprint
+
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +50,7 @@ def setup_parser():
         "-o",
         "--output",
         type=str,
-        default="posts-QUERY.db",
+        default="DB.json",
         help="db location",
     )
     return parser.parse_args()
@@ -102,12 +105,19 @@ def main():
         ],
     )
     db, cursor = open_db(args.db)
+    db_name = os.path.splitext(os.path.basename(args.db))[0]
 
     posts = read_posts(db, cursor)
-    j = json.dumps(format_json(posts))
+    j = format_json(posts)
+    s = json.dumps(j)
 
-    with open("db.json", "w", encoding="utf-8") as f:
-        f.write(j)
+    output_path = os.path.join(
+        os.path.dirname(os.path.abspath(args.db)), db_name + ".json"
+    )
+    pp = pprint.PrettyPrinter(
+        stream=open(output_path, "w", encoding="utf-8"), compact=False
+    )
+    pp.pprint(j)
 
     db.close()
 

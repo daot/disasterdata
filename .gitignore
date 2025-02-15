@@ -4,3 +4,4 @@
 */*.db
 */*.log
 */config.yaml
+*/*.json
