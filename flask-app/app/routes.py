@@ -1,8 +1,7 @@
 import requests
-from flask import Flask, jsonify
-
-app = Flask(__name__)
-
+from flask import jsonify, render_template
+from app import app
+from app.forms import SearchForm
 
 searchword = input("Enter a searchword:")
 
@@ -31,7 +30,10 @@ def search_posts():
     except requests.exceptions.RequestException as e:
         # Handle errors and return a message with the error
         return jsonify({'error': str(e)}), 500  # Return an HTTP 500 error with the error message
-
+@app.route('/index')
+def search_form():
+    form = SearchForm()
+    return render_template('index.html', title = 'Search', form=form)
 if __name__ == '__main__':
     app.run(debug=True)
 
