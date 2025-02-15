@@ -29,7 +29,7 @@ def setup_parser():
     parser = ArgumentParser(
         formatter_class=ArgumentDefaultsHelpFormatter,
         add_help=False,
-        description="Monitors Bluesky for a keyword.",
+        description="Monitors Bluesky for a query.",
     )
     parser.add_argument(
         "-h",
@@ -39,7 +39,13 @@ def setup_parser():
         help="show help and exit",
     )
     parser.add_argument(
-        "-q", "--query", type=str, required=True, help="the search query"
+        "-q",
+        "--query",
+        type=str,
+        required=True,
+        action="extend",
+        nargs="+",
+        help="the search query",
     )
     parser.add_argument(
         "-x",
@@ -52,7 +58,7 @@ def setup_parser():
         "-l",
         "--log",
         type=str,
-        default="runtime.log",
+        default="monitor.log",
         help="log file",
     )
     parser.add_argument(
@@ -83,6 +89,18 @@ def setup_parser():
         default="hours=1",
         help="date/time range for scraper (days, seconds, microseconds, milliseconds, minutes, hours, weeks)",
     )
+    parser.add_argument(
+        "-s",
+        "--since",
+        type=str,
+        help="start date for scraping range",
+    )
+    parser.add_argument(
+        "-u",
+        "--until",
+        type=str,
+        help="end date for scraping range",
+    )
     return parser.parse_args()
 
 
@@ -111,6 +129,7 @@ def init_db(db_name):
             author TEXT,
             handle TEXT,
             timestamp TEXT,
+            query TEXT,
             text TEXT,
             sentiment FLOAT,
             relevant BOOL
@@ -129,7 +148,7 @@ def analyze_sentiment(text):
     return polarity
 
 
-async def analyze_context(session, url, text, keyword, keyword_context, model):
+async def analyze_context(session, url, text, queries_context, model):
     """Asynchronously call the LM Studio chat completion API with the provided messages."""
     headers = {"Content-Type": "application/json"}
     messages = [
@@ -137,10 +156,10 @@ async def analyze_context(session, url, text, keyword, keyword_context, model):
             "role": "system",
             "content": " ".join(
                 (
-                    f"You are an AI assistant that is tasked with determining if the word {keyword} in a body of text is about {keyword_context}.",
-                    f"The text is related if it is about {keyword_context} in any way.",
-                    f"Return only 'yes' if the text is about {keyword_context}.",
-                    f"Return only 'no' if the text is not about {keyword_context}.",
+                    f"You are an AI assistant that is tasked with determining if a body of text is about {queries_context}.",
+                    f"The text is about {queries_context} if it is about {queries_context} in any way.",
+                    f"Return only 'yes' if the text is about {queries_context}.",
+                    f"Return only 'no' if the text is not about {queries_context}.",
                 )
             ),
         },
@@ -157,7 +176,7 @@ async def analyze_context(session, url, text, keyword, keyword_context, model):
                     llm_res = result["choices"][0]["message"]["content"].replace(
                         "\n", " "
                     )
-                    if "yes" in llm_res or keyword in llm_res:
+                    if "yes" in llm_res:
                         return llm_res
                 except (KeyError, IndexError):
                     logger.error("Unexpected LM Studio response structure: %s", result)
@@ -208,10 +227,10 @@ async def analyze_context(session, url, text, keyword, keyword_context, model):
             "role": "user",
             "content": " ".join(
                 (
-                    f"You are an AI assistant that is tasked with determining if the word {keyword} is related to {llm_res2}.",
-                    f"The text is related if it is about {keyword_context} in any way.",
-                    f"Return only 'yes' if the text is about {keyword_context}.",
-                    f"Return only 'no' if the text is not about {keyword_context}.",
+                    f"You are an AI assistant that is tasked with determining if {llm_res2} is related to {queries_context}.",
+                    f"The text is related if it is about {queries_context} in any way.",
+                    f"Return only 'yes' if the text is about {queries_context}.",
+                    f"Return only 'no' if the text is not about {queries_context}.",
                 )
             ),
         },
@@ -227,7 +246,7 @@ async def analyze_context(session, url, text, keyword, keyword_context, model):
                     llm_res3 = result["choices"][0]["message"]["content"].replace(
                         "\n", " "
                     )
-                    if "yes" in llm_res3 or keyword in llm_res3:
+                    if "yes" in llm_res3:
                         return llm_res3
                     return llm_res2
                 except (KeyError, IndexError):
@@ -243,13 +262,13 @@ async def analyze_context(session, url, text, keyword, keyword_context, model):
 
 
 def save_post(
-    db, cursor, post_id, author, handle, timestamp, text, sentiment, relevant
+    db, cursor, post_id, author, handle, timestamp, query, text, sentiment, relevant
 ):
     """Saves a post into the database if it does not already exist."""
     try:
         cursor.execute(
-            "INSERT INTO posts (id, author, handle, timestamp, text, sentiment, relevant) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (post_id, author, handle, timestamp, text, sentiment, relevant),
+            "INSERT INTO posts (id, author, handle, timestamp, query, text, sentiment, relevant) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (post_id, author, handle, timestamp, query, text, sentiment, relevant),
         )
         db.commit()
         logger.debug(
@@ -261,40 +280,45 @@ def save_post(
         pass
 
 
-async def fetch_posts(client, queue, keyword, time_delta):
+async def fetch_posts(client, queue, queries, since, until):
     """Fetches posts continuously and adds them to the queue."""
-    cursor = None
+    cursor = {}
+    [cursor.update({query: ""}) for query in queries]
     while True:
-        try:
-            response = await client.app.bsky.feed.search_posts(
-                {
-                    "q": keyword,
-                    "sort": "latest",
-                    "since": (datetime.utcnow() - timedelta(**time_delta)).strftime(
-                        "%Y-%m-%dT%H:%M:%SZ"
-                    ),
-                    "cursor": cursor,
-                },
-                headers={"Accept-Language": "en"},
-            )
-            if response.posts:
-                for post in response.posts:
-                    await queue.put(post)
-                cursor = response.cursor if hasattr(response, "cursor") else None
-                logger.debug("Fetched %d posts.", len(response.posts))
-        except exceptions.ModelError as e:
-            logger.debug("Mysterious aspect ratio error: %s", e)
-        except Exception as e:
-            logger.error("Error fetching posts: %s", e)
-        await asyncio.sleep(API_TIMEOUT)
+        for query in queries:
+            try:
+                response = await client.app.bsky.feed.search_posts(
+                    {
+                        "q": query,
+                        "sort": "latest",
+                        "since": since,
+                        "until": until,
+                        "cursor": cursor[query],
+                    },
+                    headers={"Accept-Language": "en"},
+                )
+                if response.posts:
+                    for post in response.posts:
+                        await queue.put([query, post])
+                    cursor[query] = (
+                        response.cursor if hasattr(response, "cursor") else None
+                    )
+                    logger.debug("Fetched %d posts.", len(response.posts))
+            except exceptions.ModelError as e:
+                logger.debug("Mysterious aspect ratio error: %s", e)
+            except Exception as e:
+                logger.error("Error fetching posts: %s", e)
+            await asyncio.sleep(API_TIMEOUT)
 
 
 async def process_posts(
-    db, cursor, session, queue, keyword, keyword_context, lmstudio_url, model
+    db, cursor, session, queue, queries_context, lmstudio_url, model
 ):
     """Processes and saves posts from the queue."""
     while True:
-        post = await queue.get()
+        q = await queue.get()
+        query = q[0]
+        post = q[1]
         post_id = post.uri
         timestamp = dateutil.parser.parse(
             post.record.created_at, fuzzy=True
@@ -309,10 +333,10 @@ async def process_posts(
             sentiment = analyze_sentiment(text)
             relevant_text = (
                 await analyze_context(
-                    session, lmstudio_url, text, keyword, keyword_context, model
+                    session, lmstudio_url, text, queries_context, model
                 )
             ).lower()
-            relevant = 1 if "yes" in relevant_text or keyword in relevant_text else 0
+            relevant = 1 if "yes" in relevant_text else 0
             logger.info(
                 "[%s]%s[%sRelevant, %s: %s] %s (%s): \n%.150s%s",
                 timestamp,
@@ -332,6 +356,7 @@ async def process_posts(
                 author,
                 handle,
                 timestamp,
+                query,
                 text,
                 sentiment,
                 relevant,
@@ -345,8 +370,10 @@ async def main():
     args = setup_parser()
     config = load_config(args.config)
 
-    keyword = str(args.query).lower()
-    keyword_context = keyword if args.context == "The value of QUERY" else args.context
+    queries = args.query
+    queries_context = (
+        ", ".join(queries) if args.context == "The value of QUERY" else args.context
+    )
 
     try:
         levels = {
@@ -372,7 +399,7 @@ async def main():
     logging.getLogger("httpx").setLevel(logging.WARNING)
 
     db_name = (
-        f'posts-{keyword.replace(" ", "-")}.db'
+        f'posts-{"-".join(queries).replace(" ", "-")}.db'
         if args.db == "posts-QUERY.db"
         else args.db
     )
@@ -388,24 +415,37 @@ async def main():
         logger.error("Username or password is incorrect")
         exit()
 
+    if (args.since and not args.until) or (args.until and not args.since):
+        logger.error("Needs both since and until flag")
+        exit()
+
+    if args.since or args.until:
+        since = dateutil.parser.parse(args.since, fuzzy=True).strftime(
+            "%Y-%m-%dT%H:%M:%SZ"
+        )
+        until = dateutil.parser.parse(args.until, fuzzy=True).strftime(
+            "%Y-%m-%dT%H:%M:%SZ"
+        )
+    else:
+        time_range = timedelta(
+            **{args.range.split("=")[0]: float(args.range.split("=")[1])}
+        )
+        since = (datetime.utcnow() - time_range).strftime("%Y-%m-%dT%H:%M:%SZ")
+        until = ""
+    model = config.get("model", "maziyarpanahi/qwen2.5-7b-instruct")
+
     queue = asyncio.Queue()
     async with aiohttp.ClientSession() as session:
         await asyncio.gather(
-            fetch_posts(
-                client,
-                queue,
-                keyword,
-                time_delta={args.range.split("=")[0]: float(args.range.split("=")[1])},
-            ),
+            fetch_posts(client, queue, queries, since, until),
             process_posts(
                 db,
                 cursor,
                 session,
                 queue,
-                keyword,
-                keyword_context,
+                queries_context,
                 lmstudio_url,
-                model=config.get("model", "maziyarpanahi/qwen2.5-7b-instruct"),
+                model,
             ),
         )
 
