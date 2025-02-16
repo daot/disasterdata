@@ -23,6 +23,7 @@ def search_posts():
         
         # Parse the JSON response from the API
         data = response.json()
+        print(data)
 
         # Return the data received from the external API to the client, along with the search word
         return jsonify({'searchword': searchword, 'data': data})
@@ -30,10 +31,10 @@ def search_posts():
     except requests.exceptions.RequestException as e:
         # Handle errors and return a message with the error
         return jsonify({'error': str(e)}), 500  # Return an HTTP 500 error with the error message
-@app.route('/index')
+"""@app.route('/index')
 def search_form():
     form = SearchForm()
-    return render_template('index.html', title = 'Search', form=form)
+    return render_template('index.html', title = 'Search', form=form)"""
 if __name__ == '__main__':
     app.run(debug=True)
 
