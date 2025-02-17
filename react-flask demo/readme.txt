@@ -6,3 +6,4 @@
 6. Code will produce an image of a histogram that compared the frequency of sentiment values in the 'posts-lahaina.db' database
 
 7. Tried to upload full folder but couldn't so unloading providing necessary files and database
+8. NEED TO RUN THE BACKEND AND FRONTEND AT THE SAME TIME
