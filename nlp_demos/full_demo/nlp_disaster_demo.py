@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import joblib
 
 
 # Read in the data frame
@@ -28,7 +29,7 @@ df['sentiment'].value_counts()
 from sklearn.model_selection import train_test_split
 X = df['text']
 y = df['sentiment']
- X_train, X_test, y_train, y_test = train_test_split(X,y,test_size=0.3,random_state=30)
+X_train, X_test, y_train, y_test = train_test_split(X,y,test_size=0.3,random_state=30)
 
 
 # Create pipeline
@@ -107,7 +108,7 @@ example_post = ["The fire destroyed everything..."]
 print(example_post[0])
 predict_disaster(example_post)
 
-
-
+# Export the model to be used elsewhere:
+joblib.dump(text_clf, 'disaster_classification_model.pkl')
 
 

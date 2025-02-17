@@ -4,3 +4,6 @@ pandas
 nltk
 scikit-learn
 jupyter
+joblib
+aiohttp
+atproto
