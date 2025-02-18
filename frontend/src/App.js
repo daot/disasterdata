@@ -1,0 +1,28 @@
+import React, { useState, useEffect } from "react";
+import "./App.css";
+
+function App() {
+    const [image, setImage] = useState(null);
+
+    useEffect(() => {
+        fetch("http://127.0.0.1:5000/", { method: "GET" })
+            .then((res) => res.blob())
+            .then((blob) => {
+                const imgUrl = URL.createObjectURL(blob);
+                setImage(imgUrl);
+            })
+            .catch((error) => console.error("Error fetching image: ", error));
+    }, []);
+
+    return (
+        <div className="App">
+            <header className="App-header">
+                <h1>Data Visualization Dashboard</h1>
+                {image ? <img src={image} alt="Sentiment Analysis Plot" style={{ width: "80%", maxWidth: "600px" }} /> 
+                       : <p>Loading image...</p>}
+            </header>
+        </div>
+    );
+}
+
+export default App;

@@ -1,0 +1,40 @@
+from flask import Flask, send_file
+from flask_cors import CORS
+import pandas as pd
+import matplotlib
+matplotlib.use('Agg')  # Use a non-GUI backend
+import matplotlib.pyplot as plt
+import seaborn as sb
+import sqlite3
+
+app = Flask(__name__)
+CORS(app)
+
+def generate_sentiment_plot():
+    conn = sqlite3.connect("posts-lahaina copy.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, SUBSTR(id, -13, 13) as post_id, sentiment FROM posts;")
+    dataset = cursor.fetchall()
+    conn.close()
+    
+    df = pd.DataFrame(dataset, columns=['ID', 'PostID', 'Sentiment'])
+    plt.figure(figsize=(10,6))
+    sb.histplot(df['Sentiment'], kde=True, bins=30, color='blue')
+    plt.title('Sentiment Distribution')
+    plt.xlabel('Sentiment')
+    plt.ylabel('Frequency')
+    
+    image_path = "sentiment_plot.png"
+    plt.savefig(image_path)
+    plt.close()
+    
+    return image_path
+
+@app.route('/sent-plot')
+def sentiment_plot():
+    image_path = generate_sentiment_plot()
+    return send_file(image_path, mimetype='image/png')
+
+
+if __name__ == '__main__':
+    app.run(debug=True)
