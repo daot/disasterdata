@@ -8,46 +8,29 @@ import seaborn as sb
 import plotly.express as px
 import sqlite3
 
-
 app = Flask(__name__)
 CORS(app)
-
-"""def generate_sentiment_plot():
-    conn = sqlite3.connect("./backend/posts-lahaina copy.db")
+def fetch_data(db_path):
+    #fetches data from the database
+    conn = sqlite3.connect("db_path")
     df = pd.read_sql_query("SELECT * FROM posts", conn)
-    #cursor = conn.cursor()
-    print("success connection")
-    #cursor.execute("SELECT * FROM posts;")
-    #dataset = cursor.fetchall()
     conn.close()
+    return df
 
-    print(df.head())
-    
+def generate_histogram(df):
     plt.figure(figsize=(10,6))
+
+    #histogram to track the frequency of the sentiment score
     sb.histplot(df['Sentiment'], kde=True, bins=30, color='blue')
     plt.title('Sentiment Distribution')
     plt.xlabel('Sentiment')
     plt.ylabel('Frequency')
-    
+
+    #saving image for frontend
     image_path = "sentiment_plot.png"
     plt.savefig(image_path)
     plt.close()
-    
     return image_path
-@app.route('/sent-plot')
-def sentiment_plot():
-    image_path = generate_sentiment_plot()
-    return send_file(image_path, mimetype='image/png')
-    generate_sentiment_plot()
-
-@app.route('/')
-def test():
-    conn = sqlite3.connect("./backend/posts-lahaina copy.db")
-    print("Success")
-    df = pd.read_sql_query("SELECT * FROM posts", conn)
-    print(df.head())
-    return jsonify(df.to_dict(orient="records"))
-"""
 #@app.route('/scatter-plot')
 #fig = px.scatter
 
@@ -69,9 +52,16 @@ def generate_scatter_plot():
                      labels= {'word_count': 'Word Count', 'sentiment': 'Sentiment'})
     return fig.to_html()
 
+@app.route('/histogram', methods =['GET'])
+def histogram():
+    dataframe = fetch_data("posts-lahaina copy.db")
+    image_path = generate_histogram(dataframe)
+    return send_file(image_path, mimetype='image/png')
+
 @app.route('/scatter-plot', methods=['GET'])
 def scatter_plot():
     plot_html = generate_scatter_plot()
     return plot_html
+
 if __name__ == '__main__':
     app.run(debug=True)
