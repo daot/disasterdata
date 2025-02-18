@@ -7,3 +7,7 @@
 
 7. Tried to upload full folder but couldn't so unloading providing necessary files and database
 8. NEED TO RUN THE BACKEND AND FRONTEND AT THE SAME TIME (have two seperate terminals open connected to the same venv)
+9. If in backend folder use, 
+            python server.py
+   If in disaster data folder,
+            use flask run
