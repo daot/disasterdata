@@ -114,10 +114,15 @@ def main():
     output_path = os.path.join(
         os.path.dirname(os.path.abspath(args.db)), db_name + ".json"
     )
+    '''
     pp = pprint.PrettyPrinter(
         stream=open(output_path, "w", encoding="utf-8"), compact=False
     )
     pp.pprint(j)
+    '''
+
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(j, f, ensure_ascii=False, indent=4)
 
     db.close()
 
