@@ -1,7 +1,9 @@
 **/.DS_Store
 **/.vscode/
 */venv/*
-*/*.db
-*/*.log
-*/config.yaml
-*/*.json
+**/*.db
+**/*.log
+**/config.yaml
+**/*.json
+**/.venv
+**/.ipynb_checkpoints
