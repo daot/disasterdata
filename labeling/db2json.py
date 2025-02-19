@@ -110,9 +110,15 @@ def main():
     posts = read_posts(db, cursor)
     j = format_json(posts)
     s = json.dumps(j)
+    o_folder = (
+        os.path.abspath(args.db)
+        if args.output == "DB.json"
+        else 
+        args.output
+    )
 
     output_path = os.path.join(
-        os.path.dirname(os.path.abspath(args.db)), db_name + ".json"
+        os.path.dirname(o_folder), db_name + ".json"
     )
     '''
     pp = pprint.PrettyPrinter(
