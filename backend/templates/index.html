@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Visualization Dashboard</title>
+    <style>
+        .dashboard-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .chart-container {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            text-align: center;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .chart-title {
+            margin-bottom: 15px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <h1>Visualization Dashboard</h1>
+        
+        <div class="chart-container">
+            <h2 class="chart-title">Sentiment Analysis Histogram</h2>
+            <img id="histogram" src="{{ histogram_file }}" alt="Sentiment Analysis Histogram" width="100%">
+        </div>
+
+        <div class="chart-container">
+            <h2 class="chart-title">Word Count vs. Sentiment Scatter Plot</h2>
+            <img id="scatter" src="{{ scatter_file }}" alt="Word Count vs Sentiment Scatter Plot" width="100%">
+        </div>
+    </div>
+</body>
+</html>
