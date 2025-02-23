@@ -3,11 +3,9 @@ import pandas as pd
 from preprocess import preprocess
 import joblib
 
-def main():
-    df = pd.read_csv('./datasets/lahaina-label.tsv',sep='\t')
-    df = preprocess(df)
 
-    # Do model training here
+df = pd.read_csv('./datasets/lahaina-label.tsv',sep='\t') # assuming column called ['text']
+df = preprocess(df) # cleaned text is now in df['cleaned']
 
-if __name__ == "__main__":
-    main()
+# Do model training here
+

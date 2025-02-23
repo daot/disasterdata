@@ -4,7 +4,6 @@ import aiohttp
 import sqlite3
 import sys
 import dateutil.parser
-import argparse
 import logging
 import yaml
 import os
