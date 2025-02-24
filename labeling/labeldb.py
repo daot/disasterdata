@@ -48,6 +48,19 @@ def setup_parser():
         help="output db",
     )
     parser.add_argument(
+        "-t",
+        "--type",
+        type=str,
+        required=True,
+        help="this is the event type that will be used as the matched label in the output database AS WELL AS being fed into the LLM for additonal context",
+    )
+    parser.add_argument(
+        "-x",
+        "--context",
+        type=str,
+        help="additional context for the LLM. overwrites the context given by KEYWORD",
+    )
+    parser.add_argument(
         "-l",
         "--log",
         type=str,
@@ -188,8 +201,11 @@ def main():
     input_cursor.execute("SELECT * FROM posts")
     rows = input_cursor.fetchall()
 
-    event = "a blizzard and dangerous winter weather conditions"
-    true_value = "blizzard"
+    true_value = args.type
+    event = f"a {true_value} and dangerous weather conditions"
+    if args.context:
+        event = args.context
+
     for row in rows:
         logger.info((" ".join(row[5].split("\n")))[:200])
         if not output_cursor.execute(

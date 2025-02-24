@@ -9,3 +9,6 @@ venv/
 .venv
 config.yaml
 .ipynb_checkpoints
+uv.lock
+.python-version
+pyproject.toml
