@@ -38,6 +38,7 @@ def fetch_percentage():
                     'total_label_count': int(total_count),
                     'percentage': percentage}) 
 
+#fetching most frequent for Keyword Cloud
 @app.route('/fetch-most-frequent-word/', methods = ['GET'])
 def fetch_most_frequent():
 
@@ -48,7 +49,7 @@ def fetch_most_frequent():
     cleaned_text = re.sub(r'[\n\r]+', ' ', text_combined.lower())
     cleaned_text = re.sub(r'[^\w\s]', '', cleaned_text)
 
-    #Removing all the filler words in the text 
+    #Removing all the filler words (i.e. to, and, a, etc.) in the text 
     filtered_text = [w for w in cleaned_text.split() if not w in stop_words] 
 
     #Counting the frequency of each word
