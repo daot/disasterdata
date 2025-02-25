@@ -12,3 +12,4 @@ config.yaml
 uv.lock
 .python-version
 pyproject.toml
+*.tsv
