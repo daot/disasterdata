@@ -1,13 +1,23 @@
 import React, { useEffect, useState } from "react";
-import ReactWordcloud from "react-wordcloud";
+import WordCloud from "react-d3-cloud";
 import { Card } from "react-bootstrap";
-import { fetchWordData } from "./wordData"; // Import fetch function
 
 const KeywordCloud = () => {
   const [words, setWords] = useState([]);
 
   useEffect(() => {
-    fetchWordData().then(setWords);
+    fetch("http://127.0.0.1:5000/fetch-most-frequent-word/")
+      .then((response) => response.json())
+      .then((data) => {
+        if (data && data["count of each word"]) {
+          const formattedWords = data["count of each word"].map(([text, value]) => ({
+            text,
+            value,
+          }));
+          setWords(formattedWords);
+        }
+      })
+      .catch((error) => console.error("Error fetching word cloud data:", error));
   }, []);
 
   return (
@@ -15,9 +25,14 @@ const KeywordCloud = () => {
       <Card.Body>
         <Card.Title>Keyword Cloud</Card.Title>
         {words.length > 0 ? (
-          <div style={{ height: 300 }}>
-            <ReactWordcloud words={words} />
-          </div>
+          <WordCloud
+            data={words}
+            fontSize={(word) => Math.log2(word.value) * 3}
+            rotate={0}
+            padding={2}
+            width={300}
+            height={200}
+          />
         ) : (
           <p>Loading keyword cloud...</p>
         )}
