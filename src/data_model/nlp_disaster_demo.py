@@ -4,7 +4,7 @@ import pandas as pd
 import joblib
 
 def main():
-    df = pd.read_csv('./lahaina-label.tsv',sep='\t')
+    df = pd.read_csv('./datasets/lahaina-label.tsv',sep='\t')
     df['sentiment'].value_counts()
     # remove blanks and empty strings
     # applies preprocessing (stored in ['cleaned'])
