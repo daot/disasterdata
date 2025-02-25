@@ -1,22 +1,23 @@
-from nlp_loader import nlp,tt,p
-import string
+from nlp_loader import get_nlp, get_p
 import emoji
 import re
 
-stop = set(nlp.Defaults.stop_words)
 
-def spacy_tokenize(text):
+def spacy_tokenize(text, nlp):
     return [t.text for t in nlp(text)]
 
 def strip_punct(text):
     text = re.sub('[^A-Za-z0-9 ]+','', text)
     return text
 
-def bsk_preprocessor(text, stop=stop):
+def bsk_preprocessor(text):
     text = text.lower()
     text = re.sub(r"http\S+", "", text)  # remove urls
     text = re.sub(r"\@\w+|\#", "", text)  # remove user mentions and strip hashtags
-    tokens = spacy_tokenize(text)
+    nlp = get_nlp()
+    p = get_p()
+    tokens = spacy_tokenize(text, nlp)
+    stop = set(nlp.Defaults.stop_words)
 
     final_tokens = []
     for t in tokens:
@@ -47,6 +48,7 @@ def clean_dataframe(df):
 
 # Get the named entities that are locations from a document
 def locations(text):
+    nlp = get_nlp()
     doc = nlp(text)
     locs = []
     for ent in doc.ents:
