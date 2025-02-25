@@ -1,7 +1,11 @@
-import { Row, Col, Card } from "react-bootstrap";
+import { Row, Col, Card, Container } from "react-bootstrap";
+import KeywordCloud from "./KeywordCloud";
+import Chart from "./Chart";
 //import StatsCard from "./StatsCard";
 
 const Dashboard = () => {
+  const keyword = "disaster"
+
   return (
     <div className="mt-2">
       {/* First Row - Stats */}
@@ -27,17 +31,7 @@ const Dashboard = () => {
       {/* Second Row - Charts */}
       <Row className="mt-3">
         <Col md={6}>
-          <Card className="shadow-sm" style={{ height: "300px" }}>
-            <Card.Body>
-              <Card.Title>Chart</Card.Title>
-              <img
-                src="/graph.png"
-                alt="Demo Chart"
-                className="img-fluid"
-                style={{ height: "250px"}}
-              />
-            </Card.Body>
-          </Card>
+          <Chart keyword={keyword} />
         </Col>
         <Col md={6}>
           <Card className="shadow-sm" style={{ height: "300px" }}>
@@ -55,18 +49,10 @@ const Dashboard = () => {
       </Row>
       
       {/* Third Row - Feed and Extra */}
+      <Container fluid>
       <Row className="mt-4">
         <Col md={6}>
-          <Card classNmae="shadow-sm" style={{ height: "250px" }}>
-            <Card.Body>
-              <Card.Title>Keyword Cloud</Card.Title>
-              <p>🔥 Fire - <strong>90</strong></p>
-              <p>🌪 Tornado - <strong>75</strong></p>
-              <p>🌀 Hurricane - <strong>85</strong></p>
-              <p>❄️ Blizzard - <strong>60</strong></p>
-              <p>🌊 Flood - <strong>80</strong></p>
-            </Card.Body>
-          </Card>
+          <KeywordCloud />
         </Col>
         <Col>
           <Card className="shadow-sm" style={{ height: "250px" }}>
@@ -81,6 +67,7 @@ const Dashboard = () => {
           </Card>
         </Col>
       </Row>
+      </Container>
     </div>
   );
 };
