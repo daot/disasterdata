@@ -1,16 +1,59 @@
 from flask import Flask, jsonify, request
 import pandas as pd
 from collections import Counter
+import csv
 import re
-import pprint
 import nltk
 import os
 from nltk.corpus import stopwords
+from flask_cors import CORS
+from geopy.geocoders import Nominatim
+from geopy.extra.rate_limiter import RateLimiter
+
+
 app = Flask(__name__)
+CORS(app)  
 
 df = pd.read_csv('lahaina-label.tsv', sep='\t', names = ['sentiment', 'text'], skiprows = 1)
 nltk.download('stopwords')
 stop_words = set(stopwords.words('english'))
+
+@app.route('/fetch-location-coordinates/', methods=['GET'])
+def fetch_location_coordinates():
+
+    #reading the csv file
+    with open('locations.csv') as f:
+        read_obj = csv.reader(f)
+        results = []
+        next(read_obj)  
+        results = [row for row in read_obj]
+
+    geolocator = Nominatim(user_agent="city_coordinates_app")
+    adjusted_location = []
+
+    for result in results:
+        location_name = f"{result[0]}, {result[1]}"
+        location = geolocator.geocode(location_name, timeout=10)
+
+        # Rate limiting to avoid hitting the API too fast
+        geocode = RateLimiter(geolocator.geocode, min_delay_seconds=1, max_retries=3, error_wait_seconds=1)
+        if location:
+            adjusted_location.append(
+                {
+                    'location': location_name,
+                    'latitude': location.latitude,
+                    'longitude': location.longitude
+                }
+            )
+        else:
+            adjusted_location.append(
+                {
+                   'location': location_name,
+                   'latitude': 'Not Found',
+                   'longitude':'Not Found' 
+                }
+            )
+    return jsonify(adjusted_location)
 
 @app.route('/fetch-info/', methods=['GET'])
 def fetch_label_or_text():
@@ -38,7 +81,7 @@ def fetch_percentage():
                     'total_label_count': int(total_count),
                     'percentage': percentage}) 
 
-#fetching most frequent for Keyword Cloud
+#fetching most frequent for Keyword Cloud (will be subject to change when i have pre-processed data)
 @app.route('/fetch-most-frequent-word/', methods = ['GET'])
 def fetch_most_frequent():
 
