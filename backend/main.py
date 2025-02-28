@@ -14,7 +14,7 @@ from geopy.extra.rate_limiter import RateLimiter
 app = Flask(__name__)
 CORS(app)  
 
-df = pd.read_csv('lahaina-label.tsv', sep='\t', names = ['sentiment', 'text'], skiprows = 1)
+df = pd.read_csv('lahaina-label.tsv', sep='/t', names = ['sentiment', 'text'], skiprows = 1)
 nltk.download('stopwords')
 stop_words = set(stopwords.words('english'))
 
@@ -26,17 +26,17 @@ def fetch_location_coordinates():
         read_obj = csv.reader(f)
         results = []
         next(read_obj)  
-        results = [row for row in read_obj]
+        results = [tuple(row) for row in read_obj]
 
     geolocator = Nominatim(user_agent="city_coordinates_app")
+
+    # Rate limiting to avoid hitting the API too fast
+    geocode = RateLimiter(geolocator.geocode, min_delay_seconds=1, max_retries=3, error_wait_seconds=1)
     adjusted_location = []
 
     for result in results:
-        location_name = f"{result[0]}, {result[1]}"
-        location = geolocator.geocode(location_name, timeout=10)
-
-        # Rate limiting to avoid hitting the API too fast
-        geocode = RateLimiter(geolocator.geocode, min_delay_seconds=1, max_retries=3, error_wait_seconds=1)
+        location_name = f"{result[0]}, {result[1]}" 
+        location = geocode(location_name, timeout = 10)
         if location:
             adjusted_location.append(
                 {
@@ -98,7 +98,7 @@ def fetch_most_frequent():
     #Counting the frequency of each word
     count = Counter(filtered_text)
 
-    return jsonify({'count of each word': count.most_common(10)})
+    return jsonify([{'keyword': word, 'count': freq} for word, freq in count.most_common(10)])
 
 if __name__ == '__main__':
     app.run(debug=True)
