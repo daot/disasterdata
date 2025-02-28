@@ -10,10 +10,10 @@ const KeywordCloud = () => {
     fetch("http://127.0.0.1:5000/fetch-most-frequent-word/")
       .then((response) => response.json())
       .then((data) => {
-        if (data && data["count of each word"]) {
-          const formattedWords = data["count of each word"].map(([text, value]) => ({
-            text,
-            value,
+        if (data) {
+          const formattedWords = data.map(({count, keyword}) => ({
+            value: count,
+            text: keyword,
           }));
           setWords(formattedWords);
         }
