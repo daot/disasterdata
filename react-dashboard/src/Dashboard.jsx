@@ -1,7 +1,7 @@
 import { Row, Col, Card, Container } from "react-bootstrap";
 import KeywordCloud from "./KeywordCloud";
 import Chart from "./Chart";
-//import StatsCard from "./StatsCard";
+import HeatMap from "./HeatMap";
 
 const Dashboard = () => {
   const keyword = "disaster"
@@ -34,19 +34,10 @@ const Dashboard = () => {
           <Chart keyword={keyword} />
         </Col>
         <Col md={6}>
-          <Card className="shadow-sm" style={{ height: "300px" }}>
-            <Card.Body>
-              <Card.Title>Heat Map</Card.Title>
-              <img
-                src="/heatmap.png"
-                alt="Heat Map"
-                className="img-fluid"
-                style={{ height: "250px", objectFit: "contain" }}
-              />
-            </Card.Body>
-          </Card>
+          <HeatMap />
         </Col>
       </Row>
+
       
       {/* Third Row - Feed and Extra */}
       <Container fluid>

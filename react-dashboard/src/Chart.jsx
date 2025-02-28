@@ -36,10 +36,10 @@ const Graph = ({ keyword }) => {
   }, [keyword]);
 
   return (
-    <Card className="shadow-sm" style={{ height: "300px", margin: "auto" }}>
+    <Card className="shadow-sm" style={{ height: "400px", margin: "auto" }}>
         <Card.Body>
             <Card.Title> Disaster Pie Chart </Card.Title>
-            <div style={{ width: "250px", height: "225px", margin: "auto"}}>
+            <div style={{ width: "250px", height: "400px", margin: "auto"}}>
                 {data ? <Pie data={data} /> : <p>Loading chart...</p>}
             </div>
         </Card.Body>

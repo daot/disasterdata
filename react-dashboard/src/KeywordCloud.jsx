@@ -31,7 +31,7 @@ const KeywordCloud = () => {
             rotate={0}
             padding={2}
             width={300}
-            height={200}
+            height={100}
           />
         ) : (
           <p>Loading keyword cloud...</p>
