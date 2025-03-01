@@ -108,14 +108,19 @@ def main():
     keys = list(posts[0].keys())
 
     with open(output_path, mode="w", newline="", encoding="utf-8") as f:
-        writer = csv.writer(f, delimiter="\t")
+        writer = csv.writer(f, delimiter="\t", quoting=csv.QUOTE_ALL)
 
         # Write the header
         writer.writerow(keys)
 
         # Write the rows
         for row in zip(posts):
-            writer.writerow(row[0].values())
+            writer.writerow(
+                [
+                    value.encode("unicode_escape").decode("utf-8") if value else ""
+                    for value in row[0].values()
+                ]
+            )
 
     db.close()
 

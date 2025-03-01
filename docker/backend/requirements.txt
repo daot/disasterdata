@@ -1,4 +1,4 @@
 flask
 pandas
 nltk
-Flask-CORS
+geopy

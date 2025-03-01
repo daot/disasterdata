@@ -2,6 +2,7 @@
 *.db
 *.log
 *.json
+!package*.json
 *.zip
 *.db-journal
 .vscode
@@ -13,3 +14,4 @@ uv.lock
 .python-version
 pyproject.toml
 *.tsv
+*.tar.gz
