@@ -14,4 +14,5 @@ uv.lock
 .python-version
 pyproject.toml
 *.tsv
+!merged-reduced.tsv
 *.tar.gz
