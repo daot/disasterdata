@@ -29,36 +29,24 @@ const Dashboard = () => {
       </Row>
 
       {/* Second Row - Charts */}
+      <Container fluid>
       <Row className="mt-3">
         <Col md={6}>
           <Chart keyword={keyword} />
         </Col>
         <Col md={6}>
-          <HeatMap />
-        </Col>
-      </Row>
-
-      
-      {/* Third Row - Feed and Extra */}
-      <Container fluid>
-      <Row className="mt-4">
-        <Col md={6}>
           <KeywordCloud />
-        </Col>
-        <Col>
-          <Card className="shadow-sm" style={{ height: "250px" }}>
-            <Card.Body>
-              <Card.Title>Feed</Card.Title>
-              <p> Oh no! The fire is super big </p>
-              <p> Fire! Fire! Fire!</p>
-              <p> Prayers for those affected by the fire</p>
-              <p> #LAFires</p>
-              <p> everything burned down</p>
-            </Card.Body>
-          </Card>
         </Col>
       </Row>
       </Container>
+
+      
+      {/* Third Row - Feed and Extra */}
+      <Row className="mt-4">
+        <Col md={12}>
+          <HeatMap />
+        </Col>
+      </Row>
     </div>
   );
 };
