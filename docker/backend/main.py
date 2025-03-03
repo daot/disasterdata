@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, Response
 import pandas as pd
 from collections import Counter
 import csv
@@ -10,6 +10,8 @@ from nltk.tokenize import word_tokenize
 from nltk.stem import WordNetLemmatizer
 from geopy.geocoders import Nominatim
 from geopy.extra.rate_limiter import RateLimiter
+import json
+import unicodedata
 
 
 app = Flask(__name__)
@@ -20,6 +22,7 @@ df = pd.read_csv(
     names=["id", "author", "handle", "timestamp", "query", "text", "label"],
     skiprows=1,
 )
+df["text"] = df["text"].apply(lambda x: x.encode("utf-8").decode("unicode_escape") if isinstance(x, str) else x)
 
 nltk.download("stopwords")
 nltk.download("punkt_tab")
@@ -28,6 +31,7 @@ stop_words = set(stopwords.words("english"))
 additional_stopwords = ["ha", "going", "like", "get", "got", "today", "still", "itu2019s", "go"]
 updated_stop_words = stop_words.union(set(additional_stopwords))
 lemmatizer = WordNetLemmatizer()
+
 
 @app.route("/fetch-location-coordinates/", methods=["GET"])
 def fetch_location_coordinates():
@@ -72,20 +76,22 @@ def fetch_location_coordinates():
 @app.route("/fetch-data-from-label/", methods=["GET"])
 def fetch_data_from_label():
     # Get the column name from the request arguments i.e. /fetch-info/?label=tornado (DON'T PUT IN QUOTES)
+    global df
     label = request.args.get("label")
 
+    #df["text"] = df["text"].apply(lambda x: unicodedata.normalize("NFKC", x.encode("utf-8").decode("unicode_escape")) if isinstance(x, str) else x)
     #label choices are ['other' 'tornado' 'flood' 'wildfire' 'hurricane' 'blizzard']
     #print(df["label"].unique())
 
-    df['label'] = df['label'].astype(str)
+    df["label"] = df["label"].astype(str)
 
-    label_data = df[df['label'] == label]
+    label_data = df[df["label"] == label]
 
     if label_data.empty:
         return jsonify({"Error": "Label not found"})
-
     filter_data = label_data.to_dict(orient="records")
-    return jsonify(filter_data)
+    json_data = json.dumps(filter_data, ensure_ascii=False, indent=4)
+    return Response(json_data, mimetype='application/json')
 
 
 # to make pie chart
@@ -125,7 +131,7 @@ def fetch_most_frequent():
 
     if filtered_df.empty:
         return jsonify({"error": "disaster type not found"}), 404
-
+    
     # Combining the text column as a single string
     text_combined = " ".join(filtered_df["text"].astype(str))
 
@@ -138,7 +144,7 @@ def fetch_most_frequent():
     lemmatized_words = [lemmatizer.lemmatize(word) for word in tokens]
 
     # Removing all the filler words (i.e. to, and, a, etc.) in the text
-    filtered_text = [w for w in cleaned_text if not w in updated_stop_words]
+    filtered_text = [w for w in lemmatized_words if not w in updated_stop_words]
 
     # Counting the frequency of each word
     count = Counter(filtered_text)
