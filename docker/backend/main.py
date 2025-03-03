@@ -90,7 +90,7 @@ def fetch_data_from_label():
 
 # to make pie chart
 @app.route("/fetch-label-count/", methods=["GET"])
-def fetch_percentage():
+def fetch_label_count():
     # ['other' 'tornado' 'flood' 'wildfire' 'hurricane' 'blizzard'] are labels
     count = df["label"].dropna().astype(str).value_counts().to_dict()
     total_count = df["label"].count()
