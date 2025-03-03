@@ -6,6 +6,8 @@ import re
 import nltk
 import os
 from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
+from nltk.stem import WordNetLemmatizer
 from geopy.geocoders import Nominatim
 from geopy.extra.rate_limiter import RateLimiter
 
@@ -18,9 +20,14 @@ df = pd.read_csv(
     names=["id", "author", "handle", "timestamp", "query", "text", "label"],
     skiprows=1,
 )
-nltk.download("stopwords")
-stop_words = set(stopwords.words("english"))
 
+nltk.download("stopwords")
+nltk.download("punkt_tab")
+nltk.download('wordnet')
+stop_words = set(stopwords.words("english"))
+additional_stopwords = ["ha", "going", "like", "get", "got", "today", "still", "itu2019s", "go"]
+updated_stop_words = stop_words.union(set(additional_stopwords))
+lemmatizer = WordNetLemmatizer()
 
 @app.route("/fetch-location-coordinates/", methods=["GET"])
 def fetch_location_coordinates():
@@ -62,25 +69,33 @@ def fetch_location_coordinates():
     return jsonify(adjusted_location)
 
 
-@app.route("/fetch-info/", methods=["GET"])
-def fetch_label_or_text():
-    # Get the column name from the request arguments i.e. /fetch-info/?column_name=sentiment
-    column_name = request.args.get("column_name")
+@app.route("/fetch-data-from-label/", methods=["GET"])
+def fetch_data_from_label():
+    # Get the column name from the request arguments i.e. /fetch-info/?label=tornado (DON'T PUT IN QUOTES)
+    label = request.args.get("label")
 
-    # Check if the column name is provided and exists in the DataFrame
-    if column_name in df.columns:
-        data = df[column_name].head(10).to_dict()
-    else:
-        data = {"error": "Invalid or missing column name"}
+    #label choices are ['other' 'tornado' 'flood' 'wildfire' 'hurricane' 'blizzard']
+    #print(df["label"].unique())
 
-    return jsonify(data)
+    df['label'] = df['label'].astype(str)
+
+    label_data = df[df['label'] == label]
+
+    if label_data.empty:
+        return jsonify({"Error": "Label not found"})
+
+    filter_data = label_data.to_dict(orient="records")
+    return jsonify(filter_data)
 
 
 # Good for a pie chart or keyword cloud
-@app.route("/fetch-disaster-count/", methods=["GET"])
+@app.route("/fetch-label-count/", methods=["GET"])
 def fetch_percentage():
-    # Calculate the percentage of the user-typed label i.e. /fetch-info/?keyword=keyword
+    # Options are ['other' 'tornado' 'flood' 'wildfire' 'hurricane' 'blizzard']
     keyword = request.args.get("keyword")
+    if not keyword:
+        return jsonify({"Error": "Keyword not provided"}), 400
+    
     df_filtered = df["label"].dropna().astype(str)
     count = df_filtered.str.contains(str(keyword), case=False).sum()
     total_count = df["label"].count()
@@ -94,27 +109,39 @@ def fetch_percentage():
         }
     )
 
-
 # fetching most frequent for keyword Cloud (will be subject to change when i have pre-processed data)
+#to fix the unicode issue, i can maybe use ensure_ascii on the df before processing for count
 @app.route("/fetch-most-frequent-word/", methods=["GET"])
 def fetch_most_frequent():
+    disaster_type = request.args.get("disaster_type")
+    if disaster_type is None:
+        filtered_df = df
+    else:
+        filtered_df = df[df["label"]==disaster_type]
+
+    if filtered_df.empty:
+        return jsonify({"error": "error processing data"}), 404
 
     # Combining the text column as a single string
-    text_combined = " ".join(df["text"].astype(str))
+    text_combined = " ".join(filtered_df["text"].astype(str))
 
-    # Using regex to remove punctuation, newlines, and convert to lowercase
+    #Using regex to remove punctuation, newlines, and convert to lowercase
     cleaned_text = re.sub(r"[\n\r]+", " ", text_combined.lower())
     cleaned_text = re.sub(r"[^\w\s]", "", cleaned_text)
 
+    tokens = word_tokenize(cleaned_text)
+
+    lemmatized_words = [lemmatizer.lemmatize(word) for word in tokens]
+
     # Removing all the filler words (i.e. to, and, a, etc.) in the text
-    filtered_text = [w for w in cleaned_text.split() if not w in stop_words]
+    filtered_text = [w for w in cleaned_text if not w in updated_stop_words]
 
     # Counting the frequency of each word
     count = Counter(filtered_text)
-
     return jsonify(
-        [{"keyword": word, "count": freq} for word, freq in count.most_common(10)]
+        [{"keyword": str(word), "count": int(freq)} for word, freq in count.most_common(20)]
     )
+
 
 
 if __name__ == "__main__":
