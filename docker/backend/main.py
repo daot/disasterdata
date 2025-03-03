@@ -88,39 +88,43 @@ def fetch_data_from_label():
     return jsonify(filter_data)
 
 
-# Good for a pie chart or keyword cloud
+# to make pie chart
 @app.route("/fetch-label-count/", methods=["GET"])
 def fetch_percentage():
-    # Options are ['other' 'tornado' 'flood' 'wildfire' 'hurricane' 'blizzard']
-    keyword = request.args.get("keyword")
-    if not keyword:
-        return jsonify({"Error": "Keyword not provided"}), 400
-    
-    df_filtered = df["label"].dropna().astype(str)
-    count = df_filtered.str.contains(str(keyword), case=False).sum()
+    # ['other' 'tornado' 'flood' 'wildfire' 'hurricane' 'blizzard'] are labels
+    count = df["label"].dropna().astype(str).value_counts().to_dict()
     total_count = df["label"].count()
-    percentage = (count / total_count) * 100
+    results = []
+    for label, c in count.items():
+        results.append(
+            {
+                "label": str(label),
+                "count": int(c),
+                "percentage": float((c / total_count) * 100)
+            }
+        )
     return jsonify(
         {
-            "keyword": keyword,
-            "count": int(count),
-            "total_label_count": int(total_count),
-            "percentage": float(percentage),
+            "total label count": int(total_count),
+            "results": results
         }
     )
 
-# fetching most frequent for keyword Cloud (will be subject to change when i have pre-processed data)
-#to fix the unicode issue, i can maybe use ensure_ascii on the df before processing for count
+# fetching most frequent for keyword cloud (will be subject to change when i have pre-processed data)
+# to fix the unicode issue, i can maybe use ensure_ascii on the df before processing for count
 @app.route("/fetch-most-frequent-word/", methods=["GET"])
 def fetch_most_frequent():
+
+    #disaster_type is optional, but you can only search ['other' 'tornado' 'flood' 'wildfire' 'hurricane' 'blizzard']
     disaster_type = request.args.get("disaster_type")
+
     if disaster_type is None:
         filtered_df = df
     else:
         filtered_df = df[df["label"]==disaster_type]
 
     if filtered_df.empty:
-        return jsonify({"error": "error processing data"}), 404
+        return jsonify({"error": "disaster type not found"}), 404
 
     # Combining the text column as a single string
     text_combined = " ".join(filtered_df["text"].astype(str))
@@ -129,8 +133,8 @@ def fetch_most_frequent():
     cleaned_text = re.sub(r"[\n\r]+", " ", text_combined.lower())
     cleaned_text = re.sub(r"[^\w\s]", "", cleaned_text)
 
+    #Text is tokenized into words and are processed in their basic form
     tokens = word_tokenize(cleaned_text)
-
     lemmatized_words = [lemmatizer.lemmatize(word) for word in tokens]
 
     # Removing all the filler words (i.e. to, and, a, etc.) in the text
