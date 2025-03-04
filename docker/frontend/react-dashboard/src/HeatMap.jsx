@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { Card } from "react-bootstrap";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import "leaflet.heat";
@@ -51,12 +50,7 @@ const HeatMap = () => {
   }, [map, coordinates]);
 
   return (
-    <Card className="shadow-sm" style={{ height: "400px", margin: "auto" }}>
-      <Card.Body>
-        <Card.Title>Heat Map (US Only)</Card.Title>
         <div id="heatmap" style={{ height: "350px", background: "lightgray" }}></div>
-      </Card.Body>
-    </Card>
   );
 };
 
