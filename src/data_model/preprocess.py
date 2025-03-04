@@ -2,20 +2,32 @@ from nlp_loader import get_nlp, get_p
 import emoji
 import re
 
-
+# get a list of tokens to process
 def spacy_tokenize(text, nlp):
     return [t.text for t in nlp(text)]
 
+# removes all non alpha-numeric characters
 def strip_punct(text):
     text = re.sub('[^A-Za-z0-9 ]+','', text)
     return text
 
-def bsk_preprocessor(text):
+'''
+Does the following:
+- converts emojis to their descriptions without punctuation
+- strips hashtags of their # symbols
+- removes user mentions entirely
+- removes urls entirely
+- converts numbers to words for consistency
+
+Be aware that an empty string may be returned.
+To save on loading time, the process using this module should use the nlp_loader to pre-load
+spacy and the inflect engine with nlp_loader modules, then pass them in as arguments.
+'''
+def bsk_preprocessor(text, nlp=get_nlp(), p=get_p()):
     text = text.lower()
     text = re.sub(r"http\S+", "", text)  # remove urls
     text = re.sub(r"\@\w+|\#", "", text)  # remove user mentions and strip hashtags
-    nlp = get_nlp()
-    p = get_p()
+
     tokens = spacy_tokenize(text, nlp)
     stop = set(nlp.Defaults.stop_words)
 
@@ -47,8 +59,7 @@ def clean_dataframe(df):
     return df
 
 # Get the named entities that are locations from a document
-def locations(text):
-    nlp = get_nlp()
+def locations(text, nlp=get_nlp()):
     doc = nlp(text)
     locs = []
     for ent in doc.ents:
@@ -61,5 +72,5 @@ def locations(text):
 def preprocess_dataframe(df):
     df = clean_dataframe(df) # remove blanks and empty strings
     df['cleaned'] = df['text'].apply(bsk_preprocessor) # Use this one to train the data
-    df = clean_dataframe(df) # remove blanks and empty strings
+    df = clean_dataframe(df) # remove blanks and empty strings again
     return df
