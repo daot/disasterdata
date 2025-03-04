@@ -61,6 +61,6 @@ def merge_databases(source_folder, output_db):
 
 
 if __name__ == "__main__":
-    source_folder = "./db-files"  # Change to the folder containing the databases
-    output_db = "merged.db"  # Name of the output database
+    source_folder = "./db-files/labeled"  # Change to the folder containing the databases
+    output_db = "./db-files/labeled/merged-labeled.db"  # Name of the output database
     merge_databases(source_folder, output_db)
