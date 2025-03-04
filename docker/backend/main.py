@@ -7,7 +7,7 @@ import nltk
 import os
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
-from nltk.stem import WordNetLemmatizer
+#from nltk.stem import WordNetLemmatizer
 from geopy.geocoders import Nominatim
 from geopy.extra.rate_limiter import RateLimiter
 import json
@@ -26,11 +26,10 @@ df["text"] = df["text"].apply(lambda x: x.encode("utf-8").decode("unicode_escape
 
 nltk.download("stopwords")
 nltk.download("punkt_tab")
-nltk.download('wordnet')
+
 stop_words = set(stopwords.words("english"))
-additional_stopwords = ["ha", "going", "like", "get", "got", "today", "still", "itu2019s", "go"]
+additional_stopwords = ["ha", "going", "like", "get", "got", "today", "still", "itu2019s", "go", "im", "would"]
 updated_stop_words = stop_words.union(set(additional_stopwords))
-lemmatizer = WordNetLemmatizer()
 
 
 @app.route("/fetch-location-coordinates/", methods=["GET"])
@@ -124,6 +123,7 @@ def fetch_most_frequent():
     #disaster_type is optional, but you can only search ['other' 'tornado' 'flood' 'wildfire' 'hurricane' 'blizzard']
     disaster_type = request.args.get("disaster_type")
 
+    #make info disaster specific or of everything
     if disaster_type is None:
         filtered_df = df
     else:
@@ -139,12 +139,11 @@ def fetch_most_frequent():
     cleaned_text = re.sub(r"[\n\r]+", " ", text_combined.lower())
     cleaned_text = re.sub(r"[^\w\s]", "", cleaned_text)
 
-    #Text is tokenized into words and are processed in their basic form
+    #Text is tokenized into words and nouns are changed to singular form
     tokens = word_tokenize(cleaned_text)
-    lemmatized_words = [lemmatizer.lemmatize(word) for word in tokens]
 
     # Removing all the filler words (i.e. to, and, a, etc.) in the text
-    filtered_text = [w for w in lemmatized_words if not w in updated_stop_words]
+    filtered_text = [w for w in tokens if not w in updated_stop_words]
 
     # Counting the frequency of each word
     count = Counter(filtered_text)
