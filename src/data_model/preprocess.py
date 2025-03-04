@@ -61,4 +61,5 @@ def locations(text):
 def preprocess_dataframe(df):
     df = clean_dataframe(df) # remove blanks and empty strings
     df['cleaned'] = df['text'].apply(bsk_preprocessor) # Use this one to train the data
+    df = clean_dataframe(df) # remove blanks and empty strings
     return df
