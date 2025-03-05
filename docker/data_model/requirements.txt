@@ -1,0 +1,10 @@
+spacy
+numpy
+pandas
+nltk
+scikit-learn
+jupyter
+joblib
+inflect
+emoji
+urllib3==1.26.6

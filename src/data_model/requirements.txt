@@ -1,9 +1,0 @@
-spacy
-numpy
-pandas
-nltk
-scikit-learn
-jupyter
-joblib
-inflect
-urllib3==1.26.6

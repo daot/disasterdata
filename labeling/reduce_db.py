@@ -15,7 +15,7 @@ def main(args):
     print("Connected to database successfully.")
     table_name = "posts"
 
-    cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
+    cursor.execute(f"SELECT COUNT(*) FROM {table_name} WHERE label='other'")
     total_rows = cursor.fetchone()[0]
 
     remove = total_rows - args.rows
@@ -29,7 +29,7 @@ def main(args):
         else:
             print("Continuing...")
 
-        cursor.execute(f"SELECT id FROM {table_name}")
+        cursor.execute(f"SELECT id FROM {table_name} WHERE label='other'")  # Only select 'other' rows
         ids = [row[0] for row in cursor.fetchall()] # get a list of the ids in the db
         random.shuffle(ids) # shuffle the ids
         for id in ids[:remove]: # remove until amount to remove is done
