@@ -1,70 +1,56 @@
 import asyncio
 import aiohttp
-import sqlite3
+import requests
 import sys
 import dateutil.parser
 import logging
 import os
 import json
+import hashlib
+import urllib.parse
 from datetime import datetime, timedelta
 from atproto import AsyncClient
 from textblob import TextBlob
 from pprint import pprint
 from urllib.parse import urljoin
 from atproto_client import exceptions
+from dotenv import load_dotenv
 
 ### GLOBAL VARS ###
 
+load_dotenv()
 REQUEST_LIMIT = int(os.environ.get("REQUEST_LIMIT", "3000"))
 TIME_WINDOW = int(os.environ.get("TIME_WINDOW", "300"))
 API_TIMEOUT = float(os.environ.get("API_TIMEOUT", TIME_WINDOW / REQUEST_LIMIT / 1000))
 logger = logging.getLogger(__name__)
 
 
-def init_db(db_name):
-    """Initializes the SQLite database and creates the necessary table."""
-    logger.info("Initializing database.")
-    db = sqlite3.connect(db_name)
-    cursor = db.cursor()
-    cursor.execute(
-        """
-        CREATE TABLE IF NOT EXISTS posts (
-            id TEXT PRIMARY KEY,
-            author TEXT,
-            handle TEXT,
-            timestamp TEXT,
-            query TEXT,
-            text TEXT
-        )
-        """
-    )
-    db.commit()
-    logger.info("Database initialized successfully.")
-    return db, cursor
-
-
-def save_post(db, cursor, post_id, author, handle, timestamp, query, text):
+def save_post(post_id, author, handle, timestamp, query, text):
     """Saves a post into the database if it does not already exist."""
+    session = requests.Session()
+    session.trust_env = False
+    response = session.post(
+        f"{urllib.parse.urljoin(os.environ['DB_HOST'], 'add_row')}",
+        data={
+            "auth_token": hashlib.md5(
+                (os.environ["DB_USER"] + os.environ["DB_PASSWORD"]).encode("utf-8")
+            ).hexdigest(),
+            "id": post_id,
+            "timestamp": timestamp,
+            "query": query,
+            "author": author,
+            "handle": handle,
+            "text": text,
+        },
+    )
     try:
-        cursor.execute(
-            "INSERT INTO posts (id, author, handle, timestamp, query, text) VALUES (?, ?, ?, ?, ?, ?)",
-            (
-                post_id,
-                author,
-                handle,
-                timestamp,
-                query,
-                text,
-            ),
-        )
-        db.commit()
-        logger.debug(
-            "Saved post from %s to db",
-            post_id,
-        )
-    except sqlite3.IntegrityError:
-        logger.info("Duplicate post ignored: %s", post_id)
-        pass
+        j_response = json.loads(response.text)
+    except json.decoder.JSONDecodeError as e:
+        logger.error(e)
+        logger.error((post_id, author, handle, timestamp, query, text))
+        exit()
+    if j_response.get("error"):
+        logger.info(j_response.get("error"))
 
 
 async def fetch_posts(client, queue, queries, since, until):
@@ -98,7 +84,7 @@ async def fetch_posts(client, queue, queries, since, until):
             await asyncio.sleep(API_TIMEOUT)
 
 
-async def process_posts(db, cursor, session, queue, model):
+async def process_posts(session, queue, model):
     """Processes and saves posts from the queue."""
     while True:
         q = await queue.get()
@@ -112,32 +98,26 @@ async def process_posts(db, cursor, session, queue, model):
         author = post.author.display_name
         handle = post.author.handle
 
-        if not cursor.execute(
-            "SELECT EXISTS (SELECT 1 FROM posts WHERE id = (?))", (post_id,)
-        ).fetchone()[0]:
-            logger.info(
-                "[%s] %s (%s): \n%.150s%s",
-                timestamp,
-                author,
-                handle,
-                text.replace("\n", " "),
-                ("..." if len(text) > 150 else ""),
-            )
-            save_post(
-                db,
-                cursor,
-                post_id,
-                author,
-                handle,
-                timestamp,
-                query,
-                text,
-            )
+        logger.info(
+            "[%s] %s (%s): \n%.150s%s",
+            timestamp,
+            author,
+            handle,
+            text.replace("\n", " "),
+            ("..." if len(text) > 150 else ""),
+        )
+        save_post(
+            post_id,
+            author,
+            handle,
+            timestamp,
+            query,
+            text,
+        )
         queue.task_done()
 
 
 async def main():
-
     logger.info("Starting Bluesky monitoring script.")
 
     try:
@@ -163,18 +143,11 @@ async def main():
         level=loglevel,
         format="%(asctime)s - %(levelname)s - %(message)s",
         handlers=[
-            logging.FileHandler(os.environ.get("LOG", "monitor.log"), encoding="utf-8"),
+            logging.FileHandler(os.environ.get("LOG", "bsky.log"), encoding="utf-8"),
             logging.StreamHandler(sys.stdout),
         ],
     )
     logging.getLogger("httpx").setLevel(logging.WARNING)
-
-    db_name = (
-        f'posts-{"-".join(queries).replace(" ", "-")}.db'
-        if os.environ.get("DB", False) == False
-        else os.environ.get("DB")
-    )
-    db, cursor = init_db(os.path.join("db", db_name))
 
     client = AsyncClient()
     try:
@@ -216,8 +189,6 @@ async def main():
         await asyncio.gather(
             fetch_posts(client, queue, queries, since, until),
             process_posts(
-                db,
-                cursor,
                 session,
                 queue,
                 model,

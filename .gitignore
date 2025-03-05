@@ -16,3 +16,4 @@ pyproject.toml
 *.tsv
 !merged-reduced.tsv
 *.tar.gz
+.env
