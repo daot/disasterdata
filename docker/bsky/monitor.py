@@ -7,34 +7,25 @@ import logging
 import os
 import json
 import urllib.parse
+import joblib
 from datetime import datetime, timedelta
 from atproto import AsyncClient
 from urllib.parse import urljoin
 from atproto_client import exceptions
 from dotenv import load_dotenv
-
-### Adding the stuff needed for preprocessing and model prediction ###
-
-current_dir = os.path.dirname(os.path.abspath(__file__))
-preprocess_dir = os.path.join(current_dir, "..", "data_model")
-sys.path.append(preprocess_dir)
-from preprocess import bsk_preprocessor,locations
+from preprocess import bsk_preprocessor, locations
 from nlp_loader import get_nlp, get_p
-import joblib
-
-nlp = get_nlp()
-p = get_p()
-model = joblib.load('../data_model/models/disaster_classification_model_v5.pkl')
-valid_labels = ['hurricane', 'flood', 'tornado', 'wildfire', 'blizzard']
-
-################################################################################
 
 ### GLOBAL VARS ###
 
 load_dotenv()
+sys.path.append(os.path.join(os.path.dirname(os.path.abspath(__file__)), "data_model"))
+NLP = get_nlp()
+P = get_p()
 REQUEST_LIMIT = int(os.environ.get("REQUEST_LIMIT", "3000"))
 TIME_WINDOW = int(os.environ.get("TIME_WINDOW", "300"))
 API_TIMEOUT = float(os.environ.get("API_TIMEOUT", TIME_WINDOW / REQUEST_LIMIT / 1000))
+model = joblib.load("data_model/models/disaster_classification_model_v5.pkl")
 logger = logging.getLogger(__name__)
 
 
@@ -43,11 +34,11 @@ logger = logging.getLogger(__name__)
 ### If there are no locations or error, returns empty string
 def get_location(text):
     if not text or text.strip() == "":
-        logger.warninglogger.warning("Skipping empty post during location extraction.")
+        logger.error("Skipping empty post during location extraction.")
         return None
     try:
-        locs = locations(text, nlp)
-        if len(locs) != 0: # In case of multiple locations only return the first one
+        locs = locations(text, NLP)
+        if len(locs) != 0:  # In case of multiple locations only return the first one
             return locs[0]
         else:
             return None
@@ -55,29 +46,33 @@ def get_location(text):
         logger.error("Error getting locations: %s", e)
         return None
 
+
 ### Applies the same preprocessing that was used for model training ###
 ### Returns the cleaned text as a string ###
 def clean_post(text):
     if not text or text.strip() == "":
-        logger.warning("Skipping empty post during text cleaning.")
+        logger.error("Skipping empty post during text cleaning.")
         return None
     try:
-        cleaned_text = bsk_preprocessor(text, nlp, p)
+        cleaned_text = bsk_preprocessor(text, NLP, P)
         return cleaned_text
     except Exception as e:
         logger.error("Error cleaning text: %s", e)
         return None
 
+
 ### Applies our model and returns the value of its prediction ###
 ### The default label is "other" in case of failure ###
 def predict_post(cleaned_text):
-    if not cleaned_text or cleaned_text.strip() == "":  # Ensure text is not empty or just spaces
-        logger.warning("Skipping empty post during classification.")
+    if (
+        not cleaned_text or cleaned_text.strip() == ""
+    ):  # Ensure text is not empty or just spaces
+        logger.error("Skipping empty post during classification.")
         return "other"
     cleaned_text = [cleaned_text]  # Convert to a list of str
     try:
         prediction = model.predict(cleaned_text)
-        return prediction[0]
+        return str(prediction[0])
     except Exception as e:
         logger.error("Error applying model: %s", e)
         return "other"  # Default label in case of failure
@@ -98,17 +93,19 @@ def save_post(post_id, author, handle, timestamp, query, text, cleaned, label, l
             "text": text,
             "cleaned": cleaned,
             "label": label,
-            "location": loc
+            "location": loc,
         },
     )
     try:
         j_response = json.loads(response.text)
     except json.decoder.JSONDecodeError as e:
         logger.error(e)
-        logger.error((post_id, author, handle, timestamp, query, text, cleaned, label, loc))
-        exit()
+        logger.error(response.text)
+        logger.error(
+            (post_id, author, handle, timestamp, query, text, cleaned, label, loc)
+        )
     if j_response.get("error"):
-        logger.info(j_response.get("error"))
+        logger.error(j_response.get("error"))
 
 
 async def fetch_posts(client, queue, queries, since, until):
@@ -142,7 +139,7 @@ async def fetch_posts(client, queue, queries, since, until):
             await asyncio.sleep(API_TIMEOUT)
 
 
-async def process_posts(session, queue, model):
+async def process_posts(session, queue):
     """Processes and saves posts from the queue."""
     while True:
         q = await queue.get()
@@ -174,20 +171,12 @@ async def process_posts(session, queue, model):
         )
 
         # Do not store irrelevant posts
+        valid_labels = ["hurricane", "flood", "tornado", "wildfire", "blizzard"]
         if label not in valid_labels:
+            logger.error("Post is not relevant")
             continue
 
-        save_post(
-            post_id,
-            author,
-            handle,
-            timestamp,
-            query,
-            text,
-            cleaned,
-            label,
-            loc
-        )
+        save_post(post_id, author, handle, timestamp, query, text, cleaned, label, loc)
         queue.task_done()
 
 
@@ -256,7 +245,6 @@ async def main():
         )
         since = (datetime.utcnow() - time_range).strftime("%Y-%m-%dT%H:%M:%SZ")
         until = ""
-    model = os.environ.get("MODEL", "maziyarpanahi/qwen2.5-7b-instruct")
 
     queue = asyncio.Queue()
     async with aiohttp.ClientSession() as session:
@@ -265,7 +253,6 @@ async def main():
             process_posts(
                 session,
                 queue,
-                model,
             ),
         )
 

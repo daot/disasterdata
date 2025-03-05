@@ -5,3 +5,12 @@ atproto
 textblob
 requests
 python-dotenv
+spacy
+numpy
+pandas
+nltk
+scikit-learn
+joblib
+inflect
+emoji
+preprocess
