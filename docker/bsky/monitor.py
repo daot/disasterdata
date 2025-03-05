@@ -31,30 +31,23 @@ def save_post(post_id, author, handle, timestamp, query, text):
     session.trust_env = False
     response = session.post(
         f"{urllib.parse.urljoin(os.environ['DB_HOST'], 'add_row')}",
-        data=json.dumps(
-            {
-                "auth_token": hashlib.md5(
-                    (os.environ["MYSQL_USER"] + os.environ["MYSQL_PASSWORD"]).encode(
-                        "utf-8"
-                    )
-                ).hexdigest(),
-                "data": {
-                    "id": post_id,
-                    "timestamp": timestamp,
-                    "query": query,
-                    "author": author,
-                    "handle": handle,
-                    "text": text,
-                },
-            }
-        ),
-        headers={"Content-Type": "application/json"},
+        data={
+            "auth_token": hashlib.md5(
+                (os.environ["DB_USER"] + os.environ["DB_PASSWORD"]).encode("utf-8")
+            ).hexdigest(),
+            "id": post_id,
+            "timestamp": timestamp,
+            "query": query,
+            "author": author,
+            "handle": handle,
+            "text": text,
+        },
     )
     try:
         j_response = json.loads(response.text)
     except json.decoder.JSONDecodeError as e:
-        print((post_id, author, handle, timestamp, query, text))
-        print(e)
+        logger.error(e)
+        logger.error((post_id, author, handle, timestamp, query, text))
         exit()
     if j_response.get("error"):
         logger.info(j_response.get("error"))
@@ -150,7 +143,7 @@ async def main():
         level=loglevel,
         format="%(asctime)s - %(levelname)s - %(message)s",
         handlers=[
-            logging.FileHandler(os.environ.get("LOG", "monitor.log"), encoding="utf-8"),
+            logging.FileHandler(os.environ.get("LOG", "bsky.log"), encoding="utf-8"),
             logging.StreamHandler(sys.stdout),
         ],
     )
