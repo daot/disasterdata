@@ -6,7 +6,6 @@ import dateutil.parser
 import logging
 import os
 import json
-import hashlib
 import urllib.parse
 from datetime import datetime, timedelta
 from atproto import AsyncClient
@@ -32,9 +31,6 @@ def save_post(post_id, author, handle, timestamp, query, text):
     response = session.post(
         f"{urllib.parse.urljoin(os.environ['DB_HOST'], 'add_row')}",
         data={
-            "auth_token": hashlib.md5(
-                (os.environ["DB_USER"] + os.environ["DB_PASSWORD"]).encode("utf-8")
-            ).hexdigest(),
             "id": post_id,
             "timestamp": timestamp,
             "query": query,

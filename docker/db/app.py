@@ -21,17 +21,6 @@ def get_db_connection():
     )
 
 
-def authenticate(auth_token):
-    return (
-        auth_token
-        == hashlib.md5(
-            (os.environ["POSTGRES_USER"] + os.environ["POSTGRES_PASSWORD"]).encode(
-                "utf-8"
-            )
-        ).hexdigest()
-    )
-
-
 def init_table():
     with get_db_connection() as conn:
         with conn.cursor() as cur:
@@ -57,10 +46,6 @@ def init_table():
 @app.route("/add_row", methods=["POST"])
 def add_row():
     request_data = request.form.to_dict()
-    auth_token = request_data.get("auth_token")
-    if not authenticate(auth_token):
-        logger.error(f"Unauthorized: {auth_token}")
-        return {"error": "Unauthorized"}, 403
 
     required_fields = {"id", "timestamp", "query", "handle", "text"}
     optional_fields = {"author", "cleaned", "label", "location"}
@@ -101,10 +86,6 @@ def add_row():
 @app.route("/edit_row", methods=["POST"])
 def edit_row():
     request_data = request.form.to_dict()
-    auth_token = request_data.pop("auth_token")
-    if not authenticate(auth_token):
-        logger.error(f"Unauthorized: {auth_token}")
-        return {"error": "Unauthorized"}, 403
 
     row_id = request_data.pop("id")
 
