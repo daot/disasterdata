@@ -17,6 +17,7 @@ const Graph = () => {
     setError(null);
 
     fetch(API_HOST + `/fetch-label-count/`)
+    //fetch(`/fetch-label-count/`)
       .then((response) => {
         if (!response.ok) {
           throw new Error("Failed to fetch data");
@@ -30,8 +31,15 @@ const Graph = () => {
           throw new Error("No data found");
         }
 
-        const labels = result.results.map((item) => item.label);
-        const values = result.results.map((item) => item.percentage);
+        const filteredResults = result.results.filter
+        (item => item.label.toLowerCase() !== 'other');
+
+        if (filteredResults.length === 0) {
+          throw new Error("No valid data found after filtering.");
+        }
+        
+        const labels = filteredResults.map((item) => item.label);
+        const values = filteredResults.map((item) => item.percentage);
 
         setData({
           labels: labels,
@@ -55,7 +63,7 @@ const Graph = () => {
     <Card className="shadow-sm" style={{ height: "375px"}}>
       <Card.Body>
         <Card.Title>Disaster Percentage Distribution</Card.Title>
-        <div style={{ width: "225px", height: "300px", margin: "auto"}}>
+        <div style={{ width: "300px", height: "300px", margin: "auto"}}>
           {data ? <Pie data={data} /> : <p>Loading chart...</p>}
         </div>
       </Card.Body>
