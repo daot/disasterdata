@@ -2,3 +2,5 @@ flask
 pandas
 nltk
 geopy
+flask-socketio
+atproto
