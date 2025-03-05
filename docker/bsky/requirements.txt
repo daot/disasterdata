@@ -3,12 +3,5 @@ aiohttp
 python-dateutil
 atproto
 textblob
-spacy
-numpy
-pandas
-nltk
-scikit-learn
-joblib
-inflect
-emoji
-urllib3
+requests
+python-dotenv
