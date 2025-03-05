@@ -24,6 +24,7 @@ To save on loading time, the process using this module should use the nlp_loader
 spacy and the inflect engine with nlp_loader modules, then pass them in as arguments.
 '''
 def bsk_preprocessor(text, nlp=get_nlp(), p=get_p()):
+    text = text.encode("utf-8").decode("unicode_escape")
     text = text.lower()
     text = re.sub(r"http\S+", "", text)  # remove urls
     text = re.sub(r"\@\w+|\#", "", text)  # remove user mentions and strip hashtags
@@ -70,7 +71,10 @@ def locations(text, nlp=get_nlp()):
     return locs
 
 def preprocess_dataframe(df):
+    nlp=get_nlp()
+    p = get_p()
     df = clean_dataframe(df) # remove blanks and empty strings
-    df['cleaned'] = df['text'].apply(bsk_preprocessor) # Use this one to train the data
-    df = clean_dataframe(df) # remove blanks and empty strings again
+    df['cleaned'] = df['text'].apply(lambda x: bsk_preprocessor(x, nlp=nlp, p=p)) # Use this one to train the data
+    df.dropna()
+    # df = clean_dataframe(df) # remove blanks and empty strings again
     return df
