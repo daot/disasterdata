@@ -66,8 +66,7 @@ def locations(text, nlp=get_nlp()):
     for ent in doc.ents:
         if ent.label_ == "GPE" or ent.label_ == "LOC":
             locs.append(ent.text)
-    if len(locs)==0:
-        locs.append("None")
+
     return locs
 
 def preprocess_dataframe(df):

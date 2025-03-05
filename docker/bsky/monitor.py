@@ -9,11 +9,25 @@ import json
 import urllib.parse
 from datetime import datetime, timedelta
 from atproto import AsyncClient
-from textblob import TextBlob
-from pprint import pprint
 from urllib.parse import urljoin
 from atproto_client import exceptions
 from dotenv import load_dotenv
+
+### Adding the stuff needed for preprocessing and model prediction ###
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+preprocess_dir = os.path.join(current_dir, "..", "data_model")
+sys.path.append(preprocess_dir)
+from preprocess import bsk_preprocessor,locations
+from nlp_loader import get_nlp, get_p
+import joblib
+
+nlp = get_nlp()
+p = get_p()
+model = joblib.load('../data_model/models/disaster_classification_model_v5.pkl')
+valid_labels = ['hurricane', 'flood', 'tornado', 'wildfire', 'blizzard']
+
+################################################################################
 
 ### GLOBAL VARS ###
 
@@ -24,7 +38,52 @@ API_TIMEOUT = float(os.environ.get("API_TIMEOUT", TIME_WINDOW / REQUEST_LIMIT / 
 logger = logging.getLogger(__name__)
 
 
-def save_post(post_id, author, handle, timestamp, query, text):
+### Extracts locations and returns the first one as a string ###
+### Ideally do this before cleaning the text since we might want capitalization ###
+### If there are no locations or error, returns empty string
+def get_location(text):
+    if not text or text.strip() == "":
+        logger.warninglogger.warning("Skipping empty post during location extraction.")
+        return None
+    try:
+        locs = locations(text, nlp)
+        if len(locs) != 0: # In case of multiple locations only return the first one
+            return locs[0]
+        else:
+            return None
+    except Exception as e:
+        logger.error("Error getting locations: %s", e)
+        return None
+
+### Applies the same preprocessing that was used for model training ###
+### Returns the cleaned text as a string ###
+def clean_post(text):
+    if not text or text.strip() == "":
+        logger.warning("Skipping empty post during text cleaning.")
+        return None
+    try:
+        cleaned_text = bsk_preprocessor(text, nlp, p)
+        return cleaned_text
+    except Exception as e:
+        logger.error("Error cleaning text: %s", e)
+        return None
+
+### Applies our model and returns the value of its prediction ###
+### The default label is "other" in case of failure ###
+def predict_post(cleaned_text):
+    if not cleaned_text or cleaned_text.strip() == "":  # Ensure text is not empty or just spaces
+        logger.warning("Skipping empty post during classification.")
+        return "other"
+    cleaned_text = [cleaned_text]  # Convert to a list of str
+    try:
+        prediction = model.predict(cleaned_text)
+        return prediction[0]
+    except Exception as e:
+        logger.error("Error applying model: %s", e)
+        return "other"  # Default label in case of failure
+
+
+def save_post(post_id, author, handle, timestamp, query, text, cleaned, label, loc):
     """Saves a post into the database if it does not already exist."""
     session = requests.Session()
     session.trust_env = False
@@ -37,13 +96,16 @@ def save_post(post_id, author, handle, timestamp, query, text):
             "author": author,
             "handle": handle,
             "text": text,
+            "cleaned": cleaned,
+            "label": label,
+            "location": loc
         },
     )
     try:
         j_response = json.loads(response.text)
     except json.decoder.JSONDecodeError as e:
         logger.error(e)
-        logger.error((post_id, author, handle, timestamp, query, text))
+        logger.error((post_id, author, handle, timestamp, query, text, cleaned, label, loc))
         exit()
     if j_response.get("error"):
         logger.info(j_response.get("error"))
@@ -94,14 +156,27 @@ async def process_posts(session, queue, model):
         author = post.author.display_name
         handle = post.author.handle
 
+        # Get the locations
+        loc = get_location(text)
+
+        # Clean the text and get the prediction
+        cleaned = clean_post(text)
+        label = predict_post(cleaned)
+
         logger.info(
-            "[%s] %s (%s): \n%.150s%s",
+            "[%s] [%s] %s (%s): \n%.150s%s",
             timestamp,
+            label,
             author,
             handle,
             text.replace("\n", " "),
             ("..." if len(text) > 150 else ""),
         )
+
+        # Do not store irrelevant posts
+        if label not in valid_labels:
+            continue
+
         save_post(
             post_id,
             author,
@@ -109,6 +184,9 @@ async def process_posts(session, queue, model):
             timestamp,
             query,
             text,
+            cleaned,
+            label,
+            loc
         )
         queue.task_done()
 
