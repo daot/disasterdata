@@ -184,7 +184,7 @@ async def main():
     logger.info("Starting Bluesky monitoring script.")
 
     try:
-        queries = os.environ["QUERIES"].split(",")
+        queries = [q.strip() for q in os.environ["QUERIES"].split(",")]
     except KeyError:
         logger.error("Missing queries")
         exit()
