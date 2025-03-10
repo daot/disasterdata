@@ -22,13 +22,16 @@ df = pd.read_csv(
     names=["id", "author", "handle", "timestamp", "query", "text", "label"],
     skiprows=1,
 )
-df["text"] = df["text"].apply(lambda x: x.encode("utf-8").decode("unicode_escape") if isinstance(x, str) else x)
+
+df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True, format = 'ISO8601')
+
+#df["text"] = df["text"].apply(lambda x: x.encode("utf-8").decode("unicode_escape") if isinstance(x, str) else x)
 
 nltk.download("stopwords")
 nltk.download("punkt_tab")
 
 stop_words = set(stopwords.words("english"))
-additional_stopwords = ["ha", "going", "like", "get", "got", "today", "still", "itu2019s", "go", "im", "would"]
+additional_stopwords = ["ha", "going", "like", "get", "got", "today", "still", "itu2019s", "go", "im", "would", "watchedskysocialappalerts"]
 updated_stop_words = stop_words.union(set(additional_stopwords))
 
 
@@ -75,10 +78,8 @@ def fetch_location_coordinates():
 @app.route("/fetch-data-from-label/", methods=["GET"])
 def fetch_data_from_label():
     # Get the column name from the request arguments i.e. /fetch-info/?label=tornado (DON'T PUT IN QUOTES)
-    global df
     label = request.args.get("label")
 
-    #df["text"] = df["text"].apply(lambda x: unicodedata.normalize("NFKC", x.encode("utf-8").decode("unicode_escape")) if isinstance(x, str) else x)
     #label choices are ['other' 'tornado' 'flood' 'wildfire' 'hurricane' 'blizzard']
     #print(df["label"].unique())
 
@@ -90,6 +91,7 @@ def fetch_data_from_label():
         return jsonify({"Error": "Label not found"})
     filter_data = label_data.to_dict(orient="records")
     json_data = json.dumps(filter_data, ensure_ascii=False, indent=4)
+
     return Response(json_data, mimetype='application/json')
 
 
@@ -115,6 +117,21 @@ def fetch_label_count():
         }
     )
 
+@app.route("/fetch-posts-over-time/")
+def fetch_posts_over_time():
+    label = request.args.get("label")
+    if not label:
+        return jsonify({"error:", "label must be provided"}), 400
+
+    filtered_df = df[df["label"]==label]
+    if filtered_df.empty:
+        return jsonify({})
+    print(filtered_df.columns)
+    posts_per_month = filtered_df.resample("M", on="timestamp").size().reset_index(name="count")
+    posts_per_month["timestamp"] = posts_per_month["timestamp"].dt.strftime("%Y-%m")
+
+    return jsonify(posts_per_month.to_dict(orient="records"))
+
 # fetching most frequent for keyword cloud (will be subject to change when i have pre-processed data)
 # to fix the unicode issue, i can maybe use ensure_ascii on the df before processing for count
 @app.route("/fetch-most-frequent-word/", methods=["GET"])
@@ -139,7 +156,7 @@ def fetch_most_frequent():
     cleaned_text = re.sub(r"[\n\r]+", " ", text_combined.lower())
     cleaned_text = re.sub(r"[^\w\s]", "", cleaned_text)
 
-    #Text is tokenized into words and nouns are changed to singular form
+    #Text is tokenized into words
     tokens = word_tokenize(cleaned_text)
 
     # Removing all the filler words (i.e. to, and, a, etc.) in the text
