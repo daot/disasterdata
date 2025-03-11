@@ -5,6 +5,7 @@ import Chart from "./Chart";
 import HeatMap from "./HeatMap";
 import LineChart from "./LineChart";
 import tweets from "./Feed";
+import DangerLevel from "./DangerLevel";
 
 const Dashboard = () => {
   const [selectedDisasterHeatmap, setSelectedDisasterHeatmap] = useState("hurricane");
@@ -49,12 +50,7 @@ const Dashboard = () => {
           </Card>
         </Col>
         <Col md={3}>
-          <Card className="shadow-sm" style={{ height: "100px", border: "2px solid red" }}>
-            <Card.Body>
-              <Card.Title style={{ fontSize: "1rem" }}>Danger Level</Card.Title>
-              <p style={{ fontSize: "1.25rem", fontWeight: "bold"}}> High </p>
-            </Card.Body>
-          </Card>
+          <DangerLevel />
         </Col>
       </Row>
 
