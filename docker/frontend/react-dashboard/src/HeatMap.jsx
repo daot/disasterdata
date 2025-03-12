@@ -50,7 +50,7 @@ const HeatMap = () => {
   }, [map, coordinates]);
 
   return (
-        <div id="heatmap" style={{ height: "350px", background: "lightgray" }}></div>
+        <div id="heatmap" style={{ height: "250px", background: "lightgray" }}></div>
   );
 };
 
