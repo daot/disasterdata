@@ -5,7 +5,7 @@ FROM python:3.10-alpine
 WORKDIR /app
 
 # Copy necessary files
-COPY main.py requirements.txt locations.csv merged-reduced.tsv  ./
+COPY data_processor.py lahaina-label.tsv merged-reduced.tsv requirements.txt routes.py ./
 
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
@@ -14,4 +14,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 EXPOSE 5000
 
 # Run the Flask app
-CMD ["python", "main.py"]
+CMD ["python", "routes.py"]
