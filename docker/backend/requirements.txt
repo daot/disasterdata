@@ -4,3 +4,4 @@ nltk
 geopy
 flask-socketio
 atproto
+requests
