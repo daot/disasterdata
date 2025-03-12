@@ -16,6 +16,7 @@ const Graph = () => {
     setLoading(true);
     setError(null);
 
+    // Fetch data from API
     fetch(API_HOST + `/fetch-label-count/`)
     //fetch(`/fetch-label-count/`)
       .then((response) => {
@@ -31,23 +32,27 @@ const Graph = () => {
           throw new Error("No data found");
         }
 
-        const filteredResults = result.results.filter
-        (item => item.label.toLowerCase() !== 'other');
+        const filteredResults = result.results.filter(
+          (item) => item.label.toLowerCase() !== 'other'
+        );
 
         if (filteredResults.length === 0) {
           throw new Error("No valid data found after filtering.");
         }
-        
+
         const labels = filteredResults.map((item) => item.label);
         const values = filteredResults.map((item) => item.percentage);
+
+        // Generate dynamic colors based on number of labels
+        const colors = labels.map(() => `#${Math.floor(Math.random() * 16777215).toString(16)}`);
 
         setData({
           labels: labels,
           datasets: [
             {
               data: values,
-              backgroundColor: ["#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0", "#9966FF", "#FF9F40"],
-              hoverBackgroundColor: ["#FF6384", "#36A2EB", "#FFCE56", "#4BC0C0", "#9966FF", "#FF9F40"],
+              backgroundColor: colors,
+              hoverBackgroundColor: colors,
             },
           ],
         });
@@ -59,12 +64,35 @@ const Graph = () => {
       .finally(() => setLoading(false));
   }, []);
 
+  const options = {
+    plugins: {
+      legend: {
+        position: "left", // Position the legend to the left
+        labels: {
+          font: {
+            size: 10, // Adjust the font size of the labels
+          },
+        },
+      },
+    },
+    responsive: true,
+    maintainAspectRatio: false,
+  };
+
   return (
-    <Card className="shadow-sm" style={{ height: "375px"}}>
+    <Card className="shadow-sm" style={{ height: "240px" }}>
       <Card.Body>
-        <Card.Title>Disaster Percentage Distribution</Card.Title>
-        <div style={{ width: "300px", height: "300px", margin: "auto"}}>
-          {data ? <Pie data={data} /> : <p>Loading chart...</p>}
+        <Card.Title>Which Natural Disasters Dominate?</Card.Title>
+        <div style={{ width: "200px", height: "190px", margin: "auto" }}>
+          {loading ? (
+            <p>Loading chart...</p>
+          ) : error ? (
+            <p>{error}</p>
+          ) : data ? (
+            <Pie data={data} options={options} />
+          ) : (
+            <p>No valid data found.</p>
+          )}
         </div>
       </Card.Body>
     </Card>
