@@ -153,6 +153,12 @@ async def process_posts(session, queue):
         author = post.author.display_name
         handle = post.author.handle
 
+        ## Implementing a minimum word count
+        # SKIP posts that do not meet the minimum word count
+        min_words = 5
+        if len(text.split()) < min_words:
+            continue
+
         # Get the locations
         loc = get_location(text)
 
