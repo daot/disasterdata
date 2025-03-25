@@ -43,8 +43,8 @@ def bsk_preprocessor(text, nlp=get_nlp(), p=get_p()):
         elif t.isnumeric():
             final_tokens.append(p.number_to_words(t))
         # skip stopwords and empty strings, include anything else
-        #elif t and t not in stop:
-        elif t:
+        elif t and t not in stop:
+        #elif t:
             temp = strip_punct(t)
             if temp:
                 final_tokens.append(strip_punct(t))
