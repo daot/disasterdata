@@ -29,7 +29,7 @@ const Dashboard = () => {
       <Col md={3}>
           <Card className="shadow-sm" style={{ height: "100px" }}>
             <Card.Body>
-              <Card.Title>Welcome to Dashboard</Card.Title>
+              <Card.Title>Crisis and Alert</Card.Title>
               <p> {`${currentTime}`} </p>
             </Card.Body>
           </Card>
