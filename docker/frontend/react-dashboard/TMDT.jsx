@@ -10,8 +10,8 @@ const TMDT = () => {
     useEffect(() => {
         const fetchTopDisaster = async () => {
             try {
-                const response = await fetch(API_HOST + `/fetch-top-disaster-last-day`);
-                //const response = await fetch('/fetch-top-disaster-last-day');
+                const response = await fetch(API_HOST + `/fetch-top-disaster-last-hour`);
+                //const response = await fetch('/fetch-top-disaster-last-hour');
                 const data = await response.json();
                 setTopDisaster(data);
             } catch (error) {
