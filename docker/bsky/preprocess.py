@@ -50,6 +50,32 @@ def bsk_preprocessor(text, nlp=get_nlp(), p=get_p()):
                 final_tokens.append(strip_punct(t))
     return " ".join(final_tokens)
 
+def bsk_preprocessor_sw(text, nlp=get_nlp(), p=get_p()):
+    text = text.encode("utf-8").decode("unicode_escape")
+    text = text.lower()
+    text = re.sub(r"http\S+", "", text)  # remove urls
+    text = re.sub(r"\@\w+|\#", "", text)  # remove user mentions and strip hashtags
+
+    tokens = spacy_tokenize(text, nlp)
+    stop = set(nlp.Defaults.stop_words)
+
+    final_tokens = []
+    for t in tokens:
+        if t.isspace() or len(t)==0: # don't add empty strings
+            continue
+        # convert emojis to their descriptions
+        if t in emoji.EMOJI_DATA:
+            final_tokens.append(re.sub('_', ' ', emoji.demojize(t).strip(':')))
+        # convert numbers to text
+        elif t.isnumeric():
+            final_tokens.append(p.number_to_words(t))
+        # skip stopwords and empty strings, include anything else
+        elif t:
+            temp = strip_punct(t)
+            if temp:
+                final_tokens.append(strip_punct(t))
+    return " ".join(final_tokens)
+
 # Remove empty spots in the data and empty strings
 def clean_dataframe(df):
     df.dropna(inplace=True)
@@ -78,4 +104,12 @@ def preprocess_dataframe(df):
     df['cleaned'] = df['text'].apply(lambda x: bsk_preprocessor(x, nlp=nlp, p=p)) # Use this one to train the data
     df.dropna()
     # df = clean_dataframe(df) # remove blanks and empty strings again
+    return df
+
+def preprocess_dataframe_sw(df):
+    nlp=get_nlp()
+    p = get_p()
+    df = clean_dataframe(df)
+    df['cleaned'] = df['text'].apply(lambda x: bsk_preprocessor_sw(x, nlp=nlp, p=p))
+    df.dropna()
     return df
