@@ -35,7 +35,8 @@ def init_table():
                     text TEXT NOT NULL,
                     cleaned TEXT,
                     label TEXT,
-                    location TEXT
+                    location TEXT,
+                    sentiment TEXT
                 )
                 """
             )
@@ -48,7 +49,7 @@ def add_row():
     request_data = request.form.to_dict()
 
     required_fields = {"id", "timestamp", "query", "handle", "text"}
-    optional_fields = {"author", "cleaned", "label", "location"}
+    optional_fields = {"author", "cleaned", "label", "location", "sentiment"}
 
     if not required_fields.issubset(request_data.keys()):
         logger.error(f"Missing required fields")
@@ -64,14 +65,15 @@ def add_row():
         request_data.get("cleaned"),
         request_data.get("label"),
         request_data.get("location"),
+        request_data.get("sentiment"),
     )
 
     try:
         with get_db_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    """INSERT INTO posts (id, timestamp, query, author, handle, text, cleaned, label, location)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                    """INSERT INTO posts (id, timestamp, query, author, handle, text, cleaned, label, location, sentiment)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
                     values,
                 )
                 conn.commit()
@@ -89,10 +91,10 @@ def edit_row():
 
     row_id = request_data.pop("id")
 
-    allowed_fields = {"cleaned", "label", "location"}
+    allowed_fields = {"cleaned", "label", "location", "sentiment"}
     if not request_data.keys() <= allowed_fields:
-        logger.error("Only 'cleaned', 'label', and 'location' can be updated")
-        return {"error": "Only 'cleaned', 'label', and 'location' can be updated"}, 400
+        logger.error("Only 'cleaned', 'label', 'location', and 'sentiment' can be updated")
+        return {"error": "Only 'cleaned', 'label', 'location', and 'sentiment' can be updated"}, 400
 
     set_clause = ", ".join([f"{key} = %s" for key in request_data.keys()])
     values = tuple(request_data.values()) + (row_id,)
@@ -115,7 +117,7 @@ def get_latest_posts():
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT id, timestamp, query, author, handle, text, cleaned, label, location 
+                SELECT id, timestamp, query, author, handle, text, cleaned, label, location, sentiment
                 FROM posts WHERE timestamp > %s ORDER BY timestamp ASC
                 """,
                 (start_timestamp,),
@@ -135,6 +137,7 @@ def get_latest_posts():
             "cleaned": row[6],
             "label": row[7],
             "location": row[8],
+            "sentiment": row[9]
         }
         posts.append(post)
         latest_timestamp = row[1]
