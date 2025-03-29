@@ -108,6 +108,7 @@ def save_post(post_id, author, handle, timestamp, query, text, cleaned, label, l
         logger.error(
             (post_id, author, handle, timestamp, query, text, cleaned, label, location, sentiment)
         )
+        return
     if j_response.get("error"):
         logger.error(j_response.get("error"))
 
