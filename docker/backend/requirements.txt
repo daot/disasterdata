@@ -6,3 +6,4 @@ flask-socketio
 atproto
 requests
 python-dotenv
+aiohttp
