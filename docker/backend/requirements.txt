@@ -7,3 +7,5 @@ atproto
 requests
 python-dotenv
 aiohttp
+flask_cors
+flask_cors
