@@ -28,22 +28,22 @@ jobs:
 
       - name: Build and push PostgreSQL image
         run: |
-          docker build -t ghcr.io/daot/disasterdata-db:latest ./disasterdata/docker/db
+          docker build -t ghcr.io/daot/disasterdata-db:latest ./docker/db
           docker push ghcr.io/daot/disasterdata-db:latest
 
       - name: Build and push Bsky image
         run: |
-          docker build -t ghcr.io/daot/disasterdata-bsky:latest ./disasterdata/docker/bsky
+          docker build -t ghcr.io/daot/disasterdata-bsky:latest ./docker/bsky
           docker push ghcr.io/daot/disasterdata-bsky:latest
 
       - name: Build and push Backend image
         run: |
-          docker build -t ghcr.io/daot/disasterdata-backend:latest ./disasterdata/docker/backend
+          docker build -t ghcr.io/daot/disasterdata-backend:latest ./docker/backend
           docker push ghcr.io/daot/disasterdata-backend:latest
 
       - name: Build and push Frontend image
         run: |
-          docker build -t ghcr.io/daot/disasterdata-frontend:latest ./disasterdata/docker/frontend
+          docker build -t ghcr.io/daot/disasterdata-frontend:latest ./docker/frontend
           docker push ghcr.io/daot/disasterdata-frontend:latest
 
       - name: Logout from GitHub Container Registry
