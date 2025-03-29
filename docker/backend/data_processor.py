@@ -8,8 +8,8 @@ import os
 import asyncio
 import aiohttp
 
-#load_dotenv()
-#API_URL=os.getenv('API_URL')
+load_dotenv()
+API_URL=os.getenv('API_URL')
 
 class DataProcessor:
     def __init__(self):
@@ -19,7 +19,7 @@ class DataProcessor:
     def fetch_data(self):
 
         """Fetching data from the API URL and converting to dataframe"""
-        response = requests.get("http://disasterdata.duckdns.org:5001/get_latest_posts")
+        response = requests.get(API_URL)
     
         if response.status_code != 200:
             print(f"error: failed to fetch data with status code {response.status_code}")

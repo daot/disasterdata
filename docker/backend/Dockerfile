@@ -5,7 +5,7 @@ FROM python:3.10-alpine
 WORKDIR /app
 
 # Copy necessary files
-COPY data_processor.py lahaina-label.tsv merged-reduced.tsv requirements.txt routes.py ./
+COPY data_processor.py requirements.txt routes.py ./
 
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
