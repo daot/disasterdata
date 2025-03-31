@@ -150,32 +150,18 @@ async def geocode_locations(df):
         #process results once complete
         for task in asyncio.as_completed(tasks):
            result = await task
-           print(f"Processed: {result}")
-        print("Done processing")
 
 async def main():
     df, status_code = await fetch_data()
     if df.empty:
-        print(f"No data found. HTTP status code {status_code}")
+        logging.info(f"No data found. HTTP status code {status_code}")
     else:
-        print(f"Data fetched successfully. Columns of original dataframe: \n{df.columns}")
+        logging.info(f"Data fetched successfully. Columns of original dataframe: \n{df.columns}")
 
         #Extracting only non-null, unique locations
         df_cleaned = df[['location']].dropna().drop_duplicates().reset_index(drop=True) 
-        print(f"Cleaned Dataframe: \n{df_cleaned.head(5)}\nProcessing {df_cleaned.size} locations...")
+        logging.info(f"Processing {df_cleaned.size} locations...")
         await geocode_locations(df_cleaned)
-
-    #print(f"Duplicates in cache:{duplicates_in(CACHE()}")
-    #testing cache lookup
-    """df = await fetch_data()
-    df_cleaned = df[['location']].dropna().drop_duplicates().reset_index(drop=True) 
-    print(df_cleaned.head(5))
-    for location in df_cleaned["location"]:
-        if check_cache(location) is not None:  
-            print(f"Cache hit: {location}")
-        else:
-            print(f"Cache miss: {location}")"""
-    
 
 if __name__ == "__main__":
     if os.path.exists(CACHE_FILE):
