@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import WordCloud from "react-d3-cloud";
 import { scaleLinear } from "d3-scale";
 
-//const API_HOST = "https://api.disasterdata.duckdns.org";
+const API_HOST = "https://api.disasterdata.duckdns.org";
 
 const disasterTypes = ["hurricane", "flood", "wildfire", "tornado", "blizzard"];
 
@@ -15,8 +15,8 @@ const KeywordCloud = React.memo(({ selectedDisasterType }) => {
     const fetchDataForDisasterType = async (type) => {
       try {
         console.log(`Fetching data for disaster type: ${type}`); // Debugging Log
-        //const response = await fetch(API_HOST + `/fetch-most-frequent-word/?disaster_type=${type}`);
-        const response = await fetch(`/fetch-most-frequent-word/?disaster_type=${type}`);
+        const response = await fetch(API_HOST + `/fetch-most-frequent-word/?disaster_type=${type}`);
+        //const response = await fetch(`/fetch-most-frequent-word/?disaster_type=${type}`);
         if (!response.ok) throw new Error(`Failed to fetch data for ${type}`);
 
         const data = await response.json();
