@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Card } from "react-bootstrap";
 
-//const API_HOST = "https://api.disasterdata.duckdns.org";
+const API_HOST = "https://api.disasterdata.duckdns.org";
 
 const DangerLevel = () => {
     const [dangerLevel, setDangerLevel] = useState({ label: "None", color: "green", disasterType: "" });
@@ -13,8 +13,8 @@ const DangerLevel = () => {
     
         for (const type of disasterTypes) {
             try {
-                const response = await fetch(`/fetch-posts-over-time/?disaster_type=${type}`);
-                //const response = await fetch(API_HOST + `/fetch-posts-over-time/?disaster_type=${type}`);
+                //const response = await fetch(`/fetch-posts-over-time/?disaster_type=${type}`);
+                const response = await fetch(API_HOST + `/fetch-posts-over-time/?disaster_type=${type}`);
     
                 if (!response.ok) {
                     throw new Error(`HTTP error! Status: ${response.status}`);
