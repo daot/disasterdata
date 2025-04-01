@@ -18,6 +18,7 @@ API_KEY=os.getenv('API_KEY')
 geocode_url=os.getenv('geocode_url') #Using HERE API
 MAX_RPS=5 #Maximum of 5 requests per second 
 
+
 #Logger to save debugging output
 logging.basicConfig(
     filename="geocode_debug.log",
@@ -26,6 +27,15 @@ logging.basicConfig(
     format="%(asctime)s %(message)s"
 )
 
+ABBREV= {
+    "us": "United States",
+    "usa": "United States",
+    "la county": "LA County",
+    "la": "Los Angeles",
+    "dc": "Washington D.C.",
+    "sf": "San Francisco",
+    "chi-town": "Chicago"
+}
 #Fetching data from the database
 async def fetch_data():
     async with aiohttp.ClientSession() as session:
@@ -37,7 +47,7 @@ async def fetch_data():
                 posts = data.get("posts", [])
                 return (pd.DataFrame(posts), response.status)
 
-#create database table
+#Create cache table (will change to posgresql table)
 def create_cache():
     with sqlite3.connect(CACHE_FILE) as conn:
         cursor = conn.cursor()
@@ -47,7 +57,7 @@ def create_cache():
         longitude REAL)""")
     return True
 
-#checking whether the location is already cached
+#Checking whether the location is already cached
 def check_cache(norm_loc):
     with sqlite3.connect(CACHE_FILE) as conn:
         logging.info(f"Checking location {norm_loc} in cache")
@@ -65,8 +75,8 @@ def check_cache(norm_loc):
         cursor.execute("""SELECT standard_location FROM locations""")
         known_locations = [row[0] for row in cursor.fetchall()]
 
-        #Account for misspellings using FuzzyMatch
-        match, score, temp = process.extractOne(norm_loc, known_locations, scorer=fuzz.ratio)
+        #Account for misspellings using RapidFuzz
+        match, score, temp = process.extractOne(norm_loc, known_locations, scorer=fuzz.ratio) if known_locations else (None, 0, None)
         if match and score > 85:
             cursor.execute("""SELECT standard_location, latitude, longitude 
             FROM locations 
@@ -76,7 +86,7 @@ def check_cache(norm_loc):
             return fuzzy_match
     return None
 
-#saving new coordinates into cache
+#Saving new coordinates into cache
 def save_in_cache(standard_location, latitude, longitude):
     with sqlite3.connect(CACHE_FILE) as conn:
         cursor = conn.cursor()
@@ -84,6 +94,7 @@ def save_in_cache(standard_location, latitude, longitude):
         VALUES (?, ?, ?)""", 
         (standard_location, latitude, longitude))
         conn.commit()
+    logger.info(f"{standard_location} saved into db")
 
 
 def duplicates_in_cache():
@@ -99,15 +110,16 @@ def duplicates_in_cache():
 
 def normalize_location(location):
     location = location.lower()
-
-    #removing punctuation or whitespace
+    
+    #Removing punctuation or whitespace
     location = re.sub(r'[^a-zA-Z0-9\s]', '', location)
-    location = re.sub(r'\s+', ' ', location)
-    return location.strip().title() 
+    location = re.sub(r'\s+', ' ', location).strip()
+
+    return cleaned_location.title() 
 
 async def fetch_geocode(session, location, semaphore):
 
-    #location skipped if in cache
+    #Location skipped if in cache
     norm_loc = normalize_location(location)
     if check_cache(norm_loc) is not None:  
         logging.info(f"Cache hit: {norm_loc}")
@@ -126,14 +138,16 @@ async def fetch_geocode(session, location, semaphore):
             logging.info(f"Error in retrieving coordinates for {norm_loc} with {e}")
             return None
     
-    #matching the HERE API response format
+    #Matching the HERE API response format
     if data.get("items"):  
         lat = data["items"][0]["position"]["lat"]
         lng = data["items"][0]["position"]["lng"]
         API_loc = data["items"][0]["address"]["label"]
 
-        #save into database
-        save_in_cache(norm_loc, lat, lng)  
+        #Save into cache and database
+        save_in_cache(norm_loc, lat, lng) 
+
+        #update_posgresql function will be implemented
         logging.info(f"{norm_loc} geocoded as {API_loc} or ({lat}, {lng})")
         return (norm_loc, lat, lng)
     
@@ -156,7 +170,7 @@ async def main():
     if df.empty:
         logging.info(f"No data found. HTTP status code {status_code}")
     else:
-        logging.info(f"Data fetched successfully. Columns of original dataframe: \n{df.columns}")
+        logging.info("Data fetched successfully.")
 
         #Extracting only non-null, unique locations
         df_cleaned = df[['location']].dropna().drop_duplicates().reset_index(drop=True) 
