@@ -17,7 +17,7 @@ const Graph = () => {
     setError(null);
 
     // Fetch data from API
-    fetch(API_HOST + `/fetch-label-count/`);
+    fetch(API_HOST + `/fetch-label-count/`)
     //fetch(`/fetch-label-count/`)
       .then((response) => {
         if (!response.ok) {
