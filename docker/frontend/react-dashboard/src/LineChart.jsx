@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Line } from "react-chartjs-2";
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from "chart.js";
 
-//const API_HOST = "https://api.disasterdata.duckdns.org";
+const API_HOST = "https://api.disasterdata.duckdns.org";
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
@@ -18,8 +18,8 @@ const LineChart = () => {
     const labels = new Set(); 
 
     for (const label of disasterTypes) {
-      //const response = await fetch(API_HOST + `/fetch-posts-over-time/?disaster_type=${label}`);
-      const response = await fetch(`/fetch-posts-over-time/?disaster_type=${label}`);
+      const response = await fetch(API_HOST + `/fetch-posts-over-time/?disaster_type=${label}`);
+      //const response = await fetch(`/fetch-posts-over-time/?disaster_type=${label}`);
       const data = await response.json();
 
       data.forEach(item => labels.add(item.timestamp));
