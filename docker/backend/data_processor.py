@@ -12,7 +12,7 @@ import aiohttp
 #load_dotenv()
 #API_URL=os.getenv('API_URL')
 
-DATABASE = "geocoded_cache.db"
+DATABASE = "location_cache.db"
 
 class DataProcessor:
     def __init__(self):
