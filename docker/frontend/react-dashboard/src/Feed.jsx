@@ -21,7 +21,7 @@ const tweets = {
     },
     earthquake: {
       author: "Mark Wilson",
-      text: "Blizzard conditions are hitting hard, stay warm and stay safe!",
+      text: "A powerful earthquake just struck, causing significant shaking. Stay safe and check on your loved ones!",
       date: "March 9, 2025 12:40 PM",
     },
   };
