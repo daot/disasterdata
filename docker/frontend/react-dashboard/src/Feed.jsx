@@ -19,7 +19,7 @@ const tweets = {
       text: "The tornado warnings are active. Stay indoors and stay safe!",
       date: "March 9, 2025 12:30 PM",
     },
-    blizzard: {
+    earthquake: {
       author: "Mark Wilson",
       text: "Blizzard conditions are hitting hard, stay warm and stay safe!",
       date: "March 9, 2025 12:40 PM",
