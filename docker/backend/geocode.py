@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 import os
 from rapidfuzz import process, fuzz
 import logging
+import us
 
 
 load_dotenv()
@@ -27,15 +28,6 @@ logging.basicConfig(
     format="%(asctime)s %(message)s"
 )
 
-ABBREV= {
-    "us": "United States",
-    "usa": "United States",
-    "la county": "LA County",
-    "la": "Los Angeles",
-    "dc": "Washington D.C.",
-    "sf": "San Francisco",
-    "chi-town": "Chicago"
-}
 #Fetching data from the database
 async def fetch_data():
     async with aiohttp.ClientSession() as session:
@@ -46,7 +38,12 @@ async def fetch_data():
                 data = await response.json()
                 posts = data.get("posts", [])
                 return (pd.DataFrame(posts), response.status)
-
+def us_cities_df():
+    if os.path.exists("uscities.csv") is False:
+        logger.info("uscities.csv file not found")
+        return None
+    return pd.read_csv("uscities.csv", usecols=["city", "lat", "lng"] skiprows=1)
+    
 #Create cache table (will change to posgresql table)
 def create_cache():
     with sqlite3.connect(CACHE_FILE) as conn:
@@ -115,6 +112,9 @@ def normalize_location(location):
     location = re.sub(r'[^a-zA-Z0-9\s]', '', location)
     location = re.sub(r'\s+', ' ', location).strip()
 
+    state_abbr = us.states.lookup(location)
+    if state_abbr:
+        return state_abbr.abbr
     return cleaned_location.title() 
 
 async def fetch_geocode(session, location, semaphore):
