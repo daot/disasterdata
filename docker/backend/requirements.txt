@@ -1,10 +1,9 @@
 flask
 pandas
-nltk
-geopy
-flask-socketio
-atproto
 requests
-python-dotenv
+asyncio
 aiohttp
-flask-cors
+nltk
+rapidfuzz
+inflect
+us

@@ -23,24 +23,26 @@ def posts_time():
         return jsonify({"error": "label must be provided"}), 400
     return jsonify(process.fetch_posts_over_time(disaster_type))
 
-@app.route("/fetch-top-disaster-last-hour/", methods = ["GET"])
+@app.route("/fetch-top-disaster-last-day/", methods = ["GET"])
 def top_disaster():
-    return jsonify(process.fetch_top_disaster_last_hour())
+    return jsonify(process.fetch_top_disaster_last_day())
 
 @app.route("/fetch-text-from-label/", methods=["GET"])
 def view_feed_data():
     disaster_type = request.args.get("disaster_type")
-    #print(f"Received disaster type: {disaster_type}")
-    if disaster_type is None:
-        error_response = {"error": "disaster type must be provided"}
-        #print("Returning error response:", error_response)
-        return jsonify(error_response), 404
-    data = process.fetch_text_last_hour(disaster_type)
-    #print(f"Fetched data type: {type(data)}")
     return Response(
-        json.dumps(data, ensure_ascii=False, indent=4),
+        json.dumps(process.fetch_text_last_hour(disaster_type), ensure_ascii=False, indent=4),
         mimetype='application/json'
     )
+    
+@app.route("/fetch-location-coordinates", methods=["GET"])
+def fetch_coordinates():
+    """API endpoint to return coordinates from geocoded_cache.db"""
+    try:
+        coordinates = process.fetch_location_coordinates()
+        return jsonify(coordinates)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
