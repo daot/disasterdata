@@ -34,16 +34,8 @@ const Dashboard = () => {
             </Card.Body>
           </Card>
         </Col>
-        <Col md={3}>
+        <Col md={6}>
           <TMDT />
-        </Col>
-        <Col md={3}>
-          <Card className="shadow-sm" style={{ height: "100px" }}>
-            <Card.Body>
-              <Card.Title style={{ fontSize: "0.75rem" }}>Top Mentioned Disaster Location In The Last Hour</Card.Title>
-              <p style={{ fontSize: "1.25rem", fontWeight: "bold"}}> Los Angeles, California </p>
-            </Card.Body>
-          </Card>
         </Col>
         <Col md={3}>
           <DangerLevel />
