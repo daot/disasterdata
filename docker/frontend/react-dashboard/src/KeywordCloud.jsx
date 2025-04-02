@@ -4,7 +4,7 @@ import { scaleLinear } from "d3-scale";
 
 const API_HOST = "https://api.disasterdata.duckdns.org";
 
-const disasterTypes = ["hurricane", "flood", "wildfire", "tornado", "blizzard"];
+const disasterTypes = ["hurricane", "flood", "wildfire", "tornado", "earthquake"];
 
 const KeywordCloud = React.memo(({ selectedDisasterType }) => {
   const [wordData, setWordData] = useState({});
