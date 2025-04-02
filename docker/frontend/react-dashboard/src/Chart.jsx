@@ -44,7 +44,7 @@ const Graph = () => {
         const values = filteredResults.map((item) => item.percentage);
 
         // Generate dynamic colors based on number of labels
-        const colors = labels.map(() => `#${Math.floor(Math.random() * 16777215).toString(16)}`);
+        const colors = ["#6272a4", "#50fa7b", "#ffb86c", "#bd93f9", "#f1fa8c"]; 
 
         setData({
           labels: labels,
@@ -72,6 +72,7 @@ const Graph = () => {
           font: {
             size: 10, // Adjust the font size of the labels
           },
+          color: "white",
         },
       },
     },
@@ -80,7 +81,7 @@ const Graph = () => {
   };
 
   return (
-    <Card className="shadow-sm" style={{ height: "240px" }}>
+    <Card className="shadow-sm" style={{ height: "280px" }}>
       <Card.Body>
         <Card.Title>Which Natural Disasters Dominate?</Card.Title>
         <div style={{ width: "200px", height: "190px", margin: "auto" }}>
