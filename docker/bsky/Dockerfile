@@ -6,7 +6,7 @@ WORKDIR /app
 
 # Copy necessary files
 COPY monitor.py nlp_loader.py preprocess.py requirements.txt ./
-COPY data_model/models/disaster_classification_model_v5.pkl ./data_model/models/disaster_classification_model_v5.pkl
+COPY data_model/models/lgbm_model_encoder_v1.pkl ./data_model/models/lgbm_model_encoder_v1.pkl
 
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
