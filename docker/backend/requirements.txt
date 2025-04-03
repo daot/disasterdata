@@ -8,3 +8,4 @@ rapidfuzz
 inflect
 us
 python-dotenv
+flask-cors
