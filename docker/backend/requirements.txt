@@ -7,3 +7,4 @@ nltk
 rapidfuzz
 inflect
 us
+python-dotenv
