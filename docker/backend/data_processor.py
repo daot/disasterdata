@@ -79,7 +79,9 @@ class DataProcessor:
 
         """Finds the posts per day based on disaster type"""
         df = self.filter_data(label=disaster_type)
-        posts_per_day = df.resample("D", on="timestamp").size().reset_index(name="post_count")
+        if df.empty:
+            return {"error": "No posts found for the given disaster type"}
+        posts_per_day = df.resample("D", on = "timestamp").size().reset_index(name="post_count")
         posts_per_day["timestamp"] = posts_per_day["timestamp"].dt.strftime("%Y-%m-%d")
         
         return posts_per_day.to_dict(orient="records")

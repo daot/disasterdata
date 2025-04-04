@@ -7,3 +7,7 @@ nltk
 rapidfuzz
 inflect
 us
+python-dotenv
+flask-cors
+redis
+psycopg2
