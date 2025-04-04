@@ -13,7 +13,7 @@ const LineChart = () => {
   });
 
   const fetchPostsOverTime = async () => {
-    const disasterTypes = ["hurricane", "flood", "wildfire", "tornado", "blizzard"];
+    const disasterTypes = ["hurricane", "flood", "wildfire", "tornado", "earthquake"];
     const datasets = [];
     const labels = new Set(); 
 

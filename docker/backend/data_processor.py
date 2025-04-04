@@ -29,7 +29,7 @@ class DataProcessor:
     def fetch_data(self):
 
         """Fetching data from the API URL and converting to dataframe"""
-        response = requests.get("http://disasterdata.duckdns.org:5001/get_latest_posts")
+        response = requests.get("http://db:5001/get_latest_posts")
     
         if response.status_code != 200:
             print(f"error: failed to fetch data with status code {response.status_code}")

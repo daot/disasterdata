@@ -11,3 +11,5 @@ python-dotenv
 flask-cors
 redis
 psycopg2
+python-dotenv
+flask-cors

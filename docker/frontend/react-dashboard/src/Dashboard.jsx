@@ -113,8 +113,8 @@ const Dashboard = () => {
                   Hurricane
                 </Button>
                 <Button 
-                  variant={selectedDisasterHeatmap === "blizzard" ? "primary" : "outline-primary"} 
-                  onClick={() => setSelectedDisasterHeatmap("blizzard")}
+                  variant={selectedDisasterHeatmap === "earthquake" ? "primary" : "outline-primary"} 
+                  onClick={() => setSelectedDisasterHeatmap("earthquake")}
                   
                 >
                   Earthquake
@@ -160,8 +160,8 @@ const Dashboard = () => {
                   Tornado
                 </Button>
                 <Button
-                  variant={selectedDisasterFeed === "blizzard" ? "primary" : "outline-primary"}
-                  onClick={() => setSelectedDisasterFeed("blizzard")}
+                  variant={selectedDisasterFeed === "earthquake" ? "primary" : "outline-primary"}
+                  onClick={() => setSelectedDisasterFeed("earthquake")}
                   
                 >
                   Earthquake
@@ -214,8 +214,8 @@ const Dashboard = () => {
                     Hurricane
                   </Button>
                   <Button 
-                    variant={selectedDisasterKeywordCloud === "blizzard" ? "primary" : "outline-primary"} 
-                    onClick={() => setSelectedDisasterKeywordCloud("blizzard")}
+                    variant={selectedDisasterKeywordCloud === "earthquake" ? "primary" : "outline-primary"} 
+                    onClick={() => setSelectedDisasterKeywordCloud("earthquake")}
                     
                   >
                     Earthquake
