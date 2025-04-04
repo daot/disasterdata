@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
 
+//const API_HOST = "https://api.disasterdata.duckdns.org";
+
 const Feed = ({ selectedDisaster }) => {
     const [tweets, setTweets] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -21,6 +23,7 @@ const Feed = ({ selectedDisaster }) => {
             try {
                 console.log(`Fetching tweets for disaster type: ${selectedDisaster}`);
                 const response = await fetch(`/fetch-text-from-label/?disaster_type=${selectedDisaster}`);
+                //const response = await fetch(API_HOST + `/fetch-text-from-label/?disaster_type=${selectedDisaster}`);
 
                 if (!response.ok) {
                     throw new Error(`HTTP error! Status: ${response.status}`);
