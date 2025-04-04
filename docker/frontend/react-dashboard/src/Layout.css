@@ -84,3 +84,35 @@
     line-height: 1.25;
   }
   
+  .tweet-container {
+    max-height: 250px;
+    overflow-y: auto;
+    padding: 10px;
+    border-radius: 5px;
+    scroll-behavior: smooth; /* Enables smooth scrolling */ 
+  }
+
+  .tweet {
+    margin-bottom: 10px;  /* Space between each tweet */
+    padding: 10px;        /* Padding around each tweet */
+    border-bottom: 1px solid #ddd;  /* Optional: Divider between tweets */
+  }
+
+  .tweet-header {
+    font-size: 0.9rem;
+    margin-bottom: 10px;  /* Space between header and tweet text */
+  }
+
+  .tweet-header strong {
+    color: #8be9fd;  /* Optional: Style the author name */
+    margin-right: 10px;
+  }
+
+  .tweet-header small {
+    color: #bd93f9;  /* Optional: Style the timestamp */
+  }
+
+  .tweet-text p {
+    font-size: 1rem;  /* Optional: Style the tweet text */
+    color: #f8f8f2;
+  }

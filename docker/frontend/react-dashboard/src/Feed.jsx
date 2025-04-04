@@ -1,30 +1,82 @@
-const tweets = {
-    hurricane: {
-      author: "John Doe",
-      text: "Just witnessed a hurricane, stay safe everyone!",
-      date: "March 9, 2025 12:05 PM",
-    },
-    flood: {
-      author: "Jane Smith",
-      text: "Floods are devastating. Please donate if you can.",
-      date: "March 9, 2025 12:10 PM",
-    },
-    wildfire: {
-      author: "David Lee",
-      text: "Wildfires are spreading quickly. Please evacuate if you're in the area.",
-      date: "March 9, 2025 12:20 PM",
-    },
-    tornado: {
-      author: "Alice Johnson",
-      text: "The tornado warnings are active. Stay indoors and stay safe!",
-      date: "March 9, 2025 12:30 PM",
-    },
-    earthquake: {
-      author: "Mark Wilson",
-      text: "A powerful earthquake just struck, causing significant shaking. Stay safe and check on your loved ones!",
-      date: "March 9, 2025 12:40 PM",
-    },
-  };
+import React, { useEffect, useState } from "react";
+
+const Feed = ({ selectedDisaster }) => {
+    const [tweets, setTweets] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+
+    useEffect(() => {
+        const fetchTweets = async () => {
+
+        const disasterTypes = ["hurricane", "flood", "wildfire", "tornado", "earthquake"];
+
+            if (!selectedDisaster || !disasterTypes.includes(selectedDisaster)) {
+                console.warn("Invalid or missing disaster type:", selectedDisaster);
+                return;
+            }
+
+            setLoading(true);
+            setError(null);
+
+            try {
+                console.log(`Fetching tweets for disaster type: ${selectedDisaster}`);
+                const response = await fetch(`/fetch-text-from-label/?disaster_type=${selectedDisaster}`);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log("API Response:", data);
+
+                if (!Array.isArray(data) || data.length === 0) {
+                    setTweets([]);
+                    setError("No tweets found for this disaster type.");
+                } else {
+                    setTweets(data);
+                }
+            } catch (error) {
+                console.error("Error fetching tweets:", error);
+                setError("Failed to fetch tweets. Please try again.");
+                setTweets([]);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchTweets();
+    }, [selectedDisaster]);
+
+    if (loading) return <p>Loading tweets...</p>;
+    if (error) return <p>{error}</p>;
+
+    return (
+      <div>
+          <div className="tweet-container">
+              {tweets.length === 0 ? (
+                  <p>No tweets available.</p>
+              ) : (
+                [...tweets] //tweets copy
+                    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+                    .map((tweet, index) => (
+                      tweet ? (
+                          <div key={index} className="tweet">
+                            <div className="tweet-header">
+                              <strong>{tweet.author ?? "Unknown Author"}</strong> 
+                              <small>{tweet.timestamp ?? "No date available"}</small>
+                              <br />
+                            </div>
+                            <div className="tweet-text">
+                              {tweet.text ?? "No text available"} 
+                            </div>
+                          </div>
+                      ) : null
+                  ))
+              )}
+          </div>
+      </div>
+  );
   
-  export default tweets;
-  
+};
+
+export default Feed;
