@@ -4,7 +4,7 @@ import KeywordCloud from "./KeywordCloud";
 import Chart from "./Chart";
 import HeatMap from "./HeatMap";
 import LineChart from "./LineChart";
-import tweets from "./Feed";
+import Feed from "./Feed";
 import DangerLevel from "./DangerLevel";
 import TMDT from "./TMDT";
 
@@ -134,14 +134,7 @@ const Dashboard = () => {
                 </Button>
               </ButtonGroup>
 
-              {/* Displaying the Selected Tweet */}
-              <Card className="shadow-sm mb-2" style={{ height: "150px" }}>
-                <Card.Body>
-                  <p><strong>Author:</strong> {tweets[selectedDisasterFeed].author}</p>
-                  <p><strong>Text:</strong> {tweets[selectedDisasterFeed].text}</p>
-                  <p><strong>Date:</strong> {tweets[selectedDisasterFeed].date}</p>
-                </Card.Body>
-              </Card>
+              <Feed selectedDisaster={selectedDisasterFeed} />
             </Card.Body>
           </Card>
         </Col>
