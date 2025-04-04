@@ -31,7 +31,7 @@ def top_disaster():
 def view_feed_data():
     disaster_type = request.args.get("disaster_type")
     return Response(
-        json.dumps(process.fetch_text_last_hour(disaster_type), ensure_ascii=False, indent=4),
+        json.dumps(process.fetch_text_last_day(disaster_type), ensure_ascii=False, indent=4),
         mimetype='application/json'
     )
     
