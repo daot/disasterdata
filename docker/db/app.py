@@ -5,9 +5,11 @@ import hashlib
 import logging
 import sys
 from dotenv import load_dotenv
+from flask_cors import CORS
 
 load_dotenv()
 app = Flask(__name__)
+CORS(app)
 logger = logging.getLogger(__name__)
 
 
