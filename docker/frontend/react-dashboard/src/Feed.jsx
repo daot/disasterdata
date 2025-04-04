@@ -48,6 +48,10 @@ const Feed = ({ selectedDisaster }) => {
         };
 
         fetchTweets();
+
+        const intervalId = setInterval(fetchTweets, 60000);
+
+        return () => clearInterval(intervalId);
     }, [selectedDisaster]);
 
     if (loading) return <p>Loading tweets...</p>;
