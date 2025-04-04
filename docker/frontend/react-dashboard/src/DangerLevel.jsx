@@ -4,47 +4,45 @@ import { Card } from "react-bootstrap";
 const API_HOST = "https://api.disasterdata.duckdns.org";
 
 const DangerLevel = () => {
-    const [dangerLevel, setDangerLevel] = useState({ label: "None", color: "green" });
-
-    const fetchPostsOverTime = async () => {
-        const disasterTypes = ["hurricane", "flood", "wildfire", "tornado", "blizzard"];
-        let totalPostCount = 0;
-
-        for (const type of disasterTypes) {
-            try {
-                const response = await fetch(`${API_HOST}/fetch-posts-over-time/?label=${type}`);
-                //const response = await fetch(`/fetch-posts-over-time/?label=${type}`);
-                const data = await response.json();
-
-                // Sum up post counts
-                totalPostCount += data.reduce((sum, item) => sum + item.count, 0);
-            } catch (error) {
-                console.error(`Error fetching posts for ${type}:`, error);
-            }
-        }
-
-        // Determine danger level
-        let newDangerLevel = { label: "None", color: "green" };
-
-        if (totalPostCount > 1000) {
-            newDangerLevel = { label: "High", color: "red" };
-        } else if (totalPostCount > 500) {
-            newDangerLevel = { label: "Medium", color: "orange" };
-        } else if (totalPostCount > 100) {
-            newDangerLevel = { label: "Low", color: "yellow" };
-        }
-
-        setDangerLevel(newDangerLevel);
-    };
+    const [dangerLevel, setDangerLevel] = useState({ label: "None", color: "#50fa7b", disasterType: "", location: "" });
 
     useEffect(() => {
-        fetchPostsOverTime();
+        const fetchDangerLevel = async () => {
+            try {
+                //const response = await fetch('/fetch-top-disaster-last-day');  // Make sure this route is correct
+                const response = await fetch(API_HOST + '/fetch-top-disaster-last-day'); 
+                if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+                const data = await response.json();
+
+                if (data.Error) {
+                    console.warn("No valid disaster data found.");
+                    return;
+                }
+
+                let color = "#50fa7b"; // Default green for 'None'
+                if (data.danger_level === "high") color = "red";
+                else if (data.danger_level === "moderate") color = "orange";
+                else if (data.danger_level === "low") color = "gold";
+
+                setDangerLevel({
+                    label: data.danger_level.charAt(0).toUpperCase() + data.danger_level.slice(1),
+                    color,
+                    disasterType: data.top_label,
+                    location: data.location
+                });
+
+            } catch (error) {
+                console.error("Error fetching danger level:", error);
+            }
+        };
+
+        fetchDangerLevel();
     }, []);
 
     return (
         <Card className="shadow-sm" style={{ height: "100px", border: `2px solid ${dangerLevel.color}` }}>
             <Card.Body>
-                <Card.Title style={{ fontSize: "1rem" }}>Danger Level</Card.Title>
+                <Card.Title style={{ fontSize: "0.75rem" }}>Danger Level</Card.Title>
                 <p style={{ fontSize: "1.25rem", fontWeight: "bold", color: dangerLevel.color }}>
                     {dangerLevel.label}
                 </p>

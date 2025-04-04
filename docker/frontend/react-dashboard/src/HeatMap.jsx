@@ -10,33 +10,36 @@ const HeatMap = () => {
   const coordinates = useFetchCoordinates(); // Fetch coordinates
 
   useEffect(() => {
+    // Initialize the map only once
     if (!map) {
       if (L.DomUtil.get("heatmap") !== null) {
         L.DomUtil.get("heatmap")._leaflet_id = null;
       }
 
       const newMap = L.map("heatmap", {
-        center: [37.8, -96], //Center of the US
+        center: [37.8, -96], // Center of the US
         zoom: 5,
-        minZoom: 3, 
-        maxZoom: 11, 
+        minZoom: 3,
+        maxZoom: 11,
         maxBounds: [
-          [15, -175], //Southwest corner
-          [55, -70], //Northeast corner
+          [15, -175], // Southwest corner
+          [55, -70], // Northeast corner
         ],
-        maxBoundsViscosity: 0.5, //Keeps the map inside bounds
+        maxBoundsViscosity: 0.5, // Keeps the map inside bounds
       });
 
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(newMap);
       setMap(newMap);
     }
+  }, [map]);
 
+  useEffect(() => {
     if (map && coordinates.length > 0) {
       if (heatLayer) {
         map.removeLayer(heatLayer);
       }
 
-      //Only include points within the US
+      // Filter points within the US
       const usCoordinates = coordinates.filter(
         (coord) =>
           coord.latitude >= 15 && coord.latitude <= 55 && // Latitude range
@@ -47,10 +50,10 @@ const HeatMap = () => {
       const newHeatLayer = L.heatLayer(heatPoints, { radius: 25, blur: 15, maxZoom: 10 }).addTo(map);
       setHeatLayer(newHeatLayer);
     }
-  }, [map, coordinates]);
+  }, [map, coordinates]); // Only update when coordinates change
 
   return (
-        <div id="heatmap" style={{ height: "250px", background: "lightgray" }}></div>
+    <div id="heatmap" style={{ height: "250px", background: "lightgray" }}></div>
   );
 };
 

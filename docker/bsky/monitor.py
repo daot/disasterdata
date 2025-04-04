@@ -6,15 +6,19 @@ import dateutil.parser
 import logging
 import os
 import json
+import hashlib
 import urllib.parse
 import joblib
 from datetime import datetime, timedelta
 from atproto import AsyncClient
+from textblob import TextBlob
+from pprint import pprint
 from urllib.parse import urljoin
 from atproto_client import exceptions
 from dotenv import load_dotenv
-from preprocess import bsk_preprocessor, locations
+from preprocess import bsk_preprocessor_sw, locations
 from nlp_loader import get_nlp, get_p
+from sklearn.preprocessing import LabelEncoder
 
 ### GLOBAL VARS ###
 
@@ -25,7 +29,7 @@ P = get_p()
 REQUEST_LIMIT = int(os.environ.get("REQUEST_LIMIT", "3000"))
 TIME_WINDOW = int(os.environ.get("TIME_WINDOW", "300"))
 API_TIMEOUT = float(os.environ.get("API_TIMEOUT", TIME_WINDOW / REQUEST_LIMIT / 1000))
-model = joblib.load("data_model/models/disaster_classification_model_v5.pkl")
+model, label_encoder = joblib.load("data_model/models/lgbm_model_encoder_v1.pkl")
 logger = logging.getLogger(__name__)
 
 
@@ -54,7 +58,7 @@ def clean_post(text):
         logger.error("Skipping empty post during text cleaning.")
         return None
     try:
-        cleaned_text = bsk_preprocessor(text, NLP, P)
+        cleaned_text = bsk_preprocessor_sw(text, NLP, P)
         return cleaned_text
     except Exception as e:
         logger.error("Error cleaning text: %s", e)
@@ -72,13 +76,14 @@ def predict_post(cleaned_text):
     cleaned_text = [cleaned_text]  # Convert to a list of str
     try:
         prediction = model.predict(cleaned_text)
-        return str(prediction[0])
+        prediction_text = label_encoder.inverse_transform(prediction)
+        return str(prediction_text[0])
     except Exception as e:
         logger.error("Error applying model: %s", e)
         return "other"  # Default label in case of failure
 
 
-def save_post(post_id, author, handle, timestamp, query, text, cleaned, label, loc):
+def save_post(post_id, author, handle, timestamp, query, text, cleaned, label, location, sentiment):
     """Saves a post into the database if it does not already exist."""
     session = requests.Session()
     session.trust_env = False
@@ -93,7 +98,8 @@ def save_post(post_id, author, handle, timestamp, query, text, cleaned, label, l
             "text": text,
             "cleaned": cleaned,
             "label": label,
-            "location": loc,
+            "location": location,
+            "sentiment": sentiment,
         },
     )
     try:
@@ -102,8 +108,9 @@ def save_post(post_id, author, handle, timestamp, query, text, cleaned, label, l
         logger.error(e)
         logger.error(response.text)
         logger.error(
-            (post_id, author, handle, timestamp, query, text, cleaned, label, loc)
+            (post_id, author, handle, timestamp, query, text, cleaned, label, location, sentiment)
         )
+        return
     if j_response.get("error"):
         logger.error(j_response.get("error"))
 
@@ -138,6 +145,11 @@ async def fetch_posts(client, queue, queries, since, until):
                 logger.error("Error fetching posts: %s", e)
             await asyncio.sleep(API_TIMEOUT)
 
+def analyze_sentiment(text):
+    """Analyzes the sentiment of the text and returns decimal value"""
+    blob = TextBlob(text)
+    polarity = blob.sentiment.polarity
+    return polarity
 
 async def process_posts(session, queue):
     """Processes and saves posts from the queue."""
@@ -153,17 +165,25 @@ async def process_posts(session, queue):
         author = post.author.display_name
         handle = post.author.handle
 
+        ## Implementing a minimum word count
+        # SKIP posts that do not meet the minimum word count
+        min_words = 5
+        if len(text.split()) < min_words:
+            continue
+
         # Get the locations
-        loc = get_location(text)
+        location = get_location(text)
+        sentiment = analyze_sentiment(text)
 
         # Clean the text and get the prediction
         cleaned = clean_post(text)
         label = predict_post(cleaned)
 
         logger.info(
-            "[%s] [%s] %s (%s): \n%.150s%s",
+            "[%s] [%s: %s] %s (%s): \n%.150s%s",
             timestamp,
             label,
+            sentiment,
             author,
             handle,
             text.replace("\n", " "),
@@ -176,7 +196,7 @@ async def process_posts(session, queue):
             logger.error("Post is not relevant")
             continue
 
-        save_post(post_id, author, handle, timestamp, query, text, cleaned, label, loc)
+        save_post(post_id, author, handle, timestamp, query, text, cleaned, label, location, sentiment)
         queue.task_done()
 
 

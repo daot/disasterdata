@@ -2,12 +2,11 @@ import React, { useEffect, useState } from "react";
 import WordCloud from "react-d3-cloud";
 import { scaleLinear } from "d3-scale";
 
-
 const API_HOST = "https://api.disasterdata.duckdns.org";
 
-const disasterTypes = ["other", "hurricane", "flood", "wildfire", "tornado", "blizzard"];
+const disasterTypes = ["hurricane", "flood", "wildfire", "tornado", "blizzard"];
 
-const KeywordCloud = ({ selectedDisasterType }) => {
+const KeywordCloud = React.memo(({ selectedDisasterType }) => {
   const [wordData, setWordData] = useState({});
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -17,6 +16,7 @@ const KeywordCloud = ({ selectedDisasterType }) => {
       try {
         console.log(`Fetching data for disaster type: ${type}`); // Debugging Log
         const response = await fetch(API_HOST + `/fetch-most-frequent-word/?disaster_type=${type}`);
+        //const response = await fetch(`/fetch-most-frequent-word/?disaster_type=${type}`);
         if (!response.ok) throw new Error(`Failed to fetch data for ${type}`);
 
         const data = await response.json();
@@ -70,6 +70,7 @@ const KeywordCloud = ({ selectedDisasterType }) => {
         <WordCloud
           data={words}
           fontSize={fontSize}
+          font={"Arial"}
           rotate={0}
           padding={3}
           width={400}
@@ -80,6 +81,6 @@ const KeywordCloud = ({ selectedDisasterType }) => {
       )}
     </div>
   );
-};
+});
 
 export default KeywordCloud;
