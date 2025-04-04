@@ -7,11 +7,14 @@ import LineChart from "./LineChart";
 import tweets from "./Feed";
 import DangerLevel from "./DangerLevel";
 
+const API_HOST = "https://api.disasterdata.duckdns.org";
 const Dashboard = () => {
   const [selectedDisasterHeatmap, setSelectedDisasterHeatmap] = useState("hurricane");
   const [selectedDisasterKeywordCloud, setSelectedDisasterKeywordCloud] = useState("hurricane");
   const [selectedDisasterFeed, setSelectedDisasterFeed] = useState("hurricane");
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleString());
+  const [topDisaster, setTopDisaster] = useState("Loading...");
+  const [topLocation, setTopLocation] = useState("Loading...");
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -21,6 +24,22 @@ const Dashboard = () => {
     return () => clearInterval(interval); 
   }, []);
 
+  useEffect(()=> {
+    const fetchTopDisaster = async () => {
+      try {
+        const response = await fetch(`${API_HOST}/fetch_top_disaster_last_day`);
+        const data = await response.json();
+        setTopDisaster(data.top_label || "Unknown");
+        setTopLocation(data.top_location || "Unknown");
+      } catch (error) {
+        console.error("Error fetching top disaster data:", error);
+        setTopDisaster("Error");
+        setTopLocation("Error");
+      }
+    };
+
+    fetchTopDisaster();
+  }, []);
   return (
     <div className="m-0">
       {/* First Row - Stats */}
@@ -36,16 +55,16 @@ const Dashboard = () => {
         <Col md={3}>
           <Card className="shadow-sm" style={{ height: "100px" }}>
             <Card.Body>
-              <Card.Title style={{ fontSize: "0.5rem" }}>Top Mentioned Disaster Type In The Last Hour</Card.Title>
-              <p style={{ fontSize: "1.5rem", fontWeight: "bold"}}> Fire </p>
+              <Card.Title style={{ fontSize: "0.5rem" }}>Top Mentioned Disaster Type In The Last Day</Card.Title>
+              <p style={{ fontSize: "1.5rem", fontWeight: "bold"}}> {topDisaster}</p>
             </Card.Body>
           </Card>
         </Col>
         <Col md={3}>
           <Card className="shadow-sm" style={{ height: "100px" }}>
             <Card.Body>
-              <Card.Title style={{ fontSize: "0.5rem" }}>Top Mentioned Disaster Location In The Last Hour</Card.Title>
-              <p style={{ fontSize: "1.25rem", fontWeight: "bold"}}> Los Angeles, California </p>
+              <Card.Title style={{ fontSize: "0.5rem" }}>Top Mentioned Disaster Location In The Last Day</Card.Title>
+              <p style={{ fontSize: "1.25rem", fontWeight: "bold"}}> {topLocation} </p>
             </Card.Body>
           </Card>
         </Col>
