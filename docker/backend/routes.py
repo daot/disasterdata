@@ -20,7 +20,7 @@ def most_frequent():
 def posts_time():
     disaster_type = request.args.get("disaster_type")
     if not disaster_type:
-        return jsonify({"error": "label must be provided"}), 400
+        return jsonify({"error": "disaster_type must be provided"}), 400
     return jsonify(process.fetch_posts_over_time(disaster_type))
 
 @app.route("/fetch-top-disaster-last-day/", methods = ["GET"])
@@ -31,7 +31,7 @@ def top_disaster():
 def view_feed_data():
     disaster_type = request.args.get("disaster_type")
     return Response(
-        json.dumps(process.fetch_text_last_hour(disaster_type), ensure_ascii=False, indent=4),
+        json.dumps(process.fetch_text_last_days(disaster_type), ensure_ascii=False, indent=4),
         mimetype='application/json'
     )
     
