@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Card } from "react-bootstrap";
 
-const API_HOST = "https://api.disasterdata.duckdns.org";
+//const API_HOST = "https://api.disasterdata.duckdns.org";
 
 const DangerLevel = () => {
     const [dangerLevel, setDangerLevel] = useState({ label: "None", color: "#50fa7b", disasterType: "", location: "" });
@@ -9,8 +9,8 @@ const DangerLevel = () => {
     useEffect(() => {
         const fetchDangerLevel = async () => {
             try {
-                //const response = await fetch('/fetch-top-disaster-last-day');  // Make sure this route is correct
-                const response = await fetch(API_HOST + '/fetch-top-disaster-last-day'); 
+                const response = await fetch('/fetch-top-disaster-last-day');  // Make sure this route is correct
+                //const response = await fetch(API_HOST + '/fetch-top-disaster-last-day'); 
                 if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
                 const data = await response.json();
 
@@ -37,6 +37,10 @@ const DangerLevel = () => {
         };
 
         fetchDangerLevel();
+
+        const intervalId = setInterval(fetchDangerLevel, 60000);
+
+        return () => clearInterval(intervalId);
     }, []);
 
     return (

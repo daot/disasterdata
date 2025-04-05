@@ -3,7 +3,7 @@ import { Pie } from "react-chartjs-2";
 import { Card } from "react-bootstrap";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 
-const API_HOST = "https://api.disasterdata.duckdns.org";
+//const API_HOST = "https://api.disasterdata.duckdns.org";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -12,13 +12,12 @@ const Graph = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
+  const fetchPieData = () => {
     setLoading(true);
     setError(null);
 
-    // Fetch data from API
-    fetch(API_HOST + `/fetch-label-count/`)
-    //fetch(`/fetch-label-count/`)
+    //fetch(API_HOST + `/fetch-label-count/`);
+    fetch(`/fetch-label-count/`)
       .then((response) => {
         if (!response.ok) {
           throw new Error("Failed to fetch data");
@@ -43,8 +42,7 @@ const Graph = () => {
         const labels = filteredResults.map((item) => item.label);
         const values = filteredResults.map((item) => item.percentage);
 
-        // Generate dynamic colors based on number of labels
-        const colors = ["#6272a4", "#50fa7b", "#ffb86c", "#bd93f9", "#f1fa8c"]; 
+        const colors = ["#6272a4", "#50fa7b", "#ffb86c", "#bd93f9", "#f1fa8c"];
 
         setData({
           labels: labels,
@@ -62,16 +60,21 @@ const Graph = () => {
         setError("Failed to load data.");
       })
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchPieData(); // initial fetch
+    const intervalId = setInterval(fetchPieData, 60000); // auto-refresh every 60 sec
+
+    return () => clearInterval(intervalId); // cleanup on unmount
   }, []);
 
   const options = {
     plugins: {
       legend: {
-        position: "left", // Position the legend to the left
+        position: "left",
         labels: {
-          font: {
-            size: 10, // Adjust the font size of the labels
-          },
+          font: { size: 10 },
           color: "white",
         },
       },
