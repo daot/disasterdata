@@ -3,7 +3,7 @@ import { Pie } from "react-chartjs-2";
 import { Card } from "react-bootstrap";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 
-//const API_HOST = "https://api.disasterdata.duckdns.org";
+const API_HOST = "https://api.disasterdata.duckdns.org";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -16,8 +16,8 @@ const Graph = () => {
     setLoading(true);
     setError(null);
 
-    //fetch(API_HOST + `/fetch-label-count/`);
-    fetch(`/fetch-label-count/`)
+    fetch(API_HOST + `/fetch-label-count/`);
+    //fetch(`/fetch-label-count/`)
       .then((response) => {
         if (!response.ok) {
           throw new Error("Failed to fetch data");
