@@ -37,6 +37,10 @@ const DangerLevel = () => {
         };
 
         fetchDangerLevel();
+
+        const intervalId = setInterval(fetchDangerLevel, 60000);
+
+        return () => clearInterval(intervalId);
     }, []);
 
     return (
