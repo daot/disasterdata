@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import WordCloud from "react-d3-cloud";
 import { scaleLinear } from "d3-scale";
 
-//const API_HOST = "https://api.disasterdata.duckdns.org";
+const API_HOST = "https://api.disasterdata.duckdns.org";
 
 const disasterTypes = ["hurricane", "flood", "wildfire", "tornado", "earthquake"];
 
@@ -11,15 +11,14 @@ const KeywordCloud = React.memo(({ selectedDisasterType }) => {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // ✅ Stable function using useCallback
   const fetchDataForDisasterType = useCallback(async () => {
     setLoading(true);
     try {
       const results = await Promise.all(
         disasterTypes.map(async (type) => {
           console.log(`Fetching data for disaster type: ${type}`);
-          //const response = await fetch(API_HOST + `/fetch-most-frequent-word/?disaster_type=${type}`);
-          const response = await fetch(`/fetch-most-frequent-word/?disaster_type=${type}`);
+          const response = await fetch(API_HOST + `/fetch-most-frequent-word/?disaster_type=${type}`);
+          //const response = await fetch(`/fetch-most-frequent-word/?disaster_type=${type}`);
           if (!response.ok) throw new Error(`Failed to fetch data for ${type}`);
 
           const data = await response.json();
