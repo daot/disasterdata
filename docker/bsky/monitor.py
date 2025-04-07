@@ -191,7 +191,7 @@ async def process_posts(session, queue):
         )
 
         # Do not store irrelevant posts
-        valid_labels = ["hurricane", "flood", "tornado", "wildfire", "blizzard"]
+        valid_labels = ["hurricane", "flood", "tornado", "wildfire", "earthquake"]
         if label not in valid_labels:
             logger.error("Post is not relevant")
             continue
