@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import WordCloud from "react-d3-cloud";
 import { scaleLinear } from "d3-scale";
 
@@ -11,44 +11,55 @@ const KeywordCloud = React.memo(({ selectedDisasterType }) => {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchDataForDisasterType = async (type) => {
-      try {
-        console.log(`Fetching data for disaster type: ${type}`); // Debugging Log
-        const response = await fetch(API_HOST + `/fetch-most-frequent-word/?disaster_type=${type}`);
-        //const response = await fetch(`/fetch-most-frequent-word/?disaster_type=${type}`);
-        if (!response.ok) throw new Error(`Failed to fetch data for ${type}`);
-
-        const data = await response.json();
-        console.log(`Fetched data for ${type}:`, data); // Debugging Log
-
-        return {
-          [type]: Array.isArray(data)
-            ? data.map(({ count, keyword }) => ({
-                value: count,
-                text: keyword,
-              }))
-            : [],
-        };
-      } catch (error) {
-        console.error(`Error fetching data for ${type}:`, error);
-        return { [type]: [] };
-      }
-    };
-
+  const fetchDataForDisasterType = useCallback(async () => {
     setLoading(true);
-    Promise.all(disasterTypes.map(fetchDataForDisasterType))
-      .then((results) => {
-        const mergedData = results.reduce((acc, curr) => ({ ...acc, ...curr }), {});
-        console.log("Final merged word data:", mergedData); // Debugging Log
-        setWordData(mergedData);
-      })
-      .catch((err) => setError("Failed to load keyword cloud"))
-      .finally(() => setLoading(false));
+    try {
+      const results = await Promise.all(
+        disasterTypes.map(async (type) => {
+          console.log(`Fetching data for disaster type: ${type}`);
+          const response = await fetch(API_HOST + `/fetch-most-frequent-word/?disaster_type=${type}`);
+          //const response = await fetch(`/fetch-most-frequent-word/?disaster_type=${type}`);
+          if (!response.ok) throw new Error(`Failed to fetch data for ${type}`);
+
+          const data = await response.json();
+          console.log(`Fetched data for ${type}:`, data);
+
+          return {
+            [type]: Array.isArray(data)
+              ? data.map(({ count, keyword }) => ({
+                  value: count,
+                  text: keyword,
+                }))
+              : [],
+          };
+        })
+      );
+
+      const mergedData = results.reduce((acc, curr) => ({ ...acc, ...curr }), {});
+      console.log("Final merged word data:", mergedData);
+      setWordData(mergedData);
+      setError(null);
+    } catch (err) {
+      console.error("Error fetching keyword cloud:", err);
+      setError("Failed to load keyword cloud");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
+  useEffect(() => {
+    fetchDataForDisasterType(); // Initial fetch
+
+    const intervalId = setInterval(() => {
+      console.log("Refreshing keyword cloud...");
+      fetchDataForDisasterType();
+    }, 60000);
+
+    return () => clearInterval(intervalId); // Cleanup interval on unmount
+  }, [fetchDataForDisasterType]);
+
   const words = wordData[selectedDisasterType] || [];
-  console.log(`Displaying words for ${selectedDisasterType}:`, words); // Debugging Log
+  console.log(`Displaying words for ${selectedDisasterType}:`, words);
 
   const fontScale = scaleLinear()
     .domain(
@@ -70,7 +81,6 @@ const KeywordCloud = React.memo(({ selectedDisasterType }) => {
         <WordCloud
           data={words}
           fontSize={fontSize}
-          font={"Arial"}
           rotate={0}
           padding={3}
           width={400}
