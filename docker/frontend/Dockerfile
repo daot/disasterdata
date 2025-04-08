@@ -7,6 +7,9 @@ WORKDIR /app
 # Copy the React project
 COPY react-dashboard/ .
 
+ARG REACT_APP_API_HOST
+ENV REACT_APP_API_HOST=$REACT_APP_API_HOST
+
 # Install dependencies
 RUN npm install --legacy-peer-deps
 

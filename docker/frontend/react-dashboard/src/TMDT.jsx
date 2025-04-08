@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Card } from "react-bootstrap";
 
-const API_HOST = "https://api.disasterdata.duckdns.org";
+const API_HOST = process.env.REACT_APP_API_HOST;
 
 const TMDT = () => {
     const [topDisaster, setTopDisaster] = useState({ label: '', location: '' });
@@ -11,7 +11,6 @@ const TMDT = () => {
         const fetchTopDisaster = async () => {
             try {
                 const response = await fetch(API_HOST + `/fetch-top-disaster-last-day`);
-                //const response = await fetch('/fetch-top-disaster-last-day');
                 const data = await response.json();
                 console.log('API response:', data);
                 setTopDisaster(data);

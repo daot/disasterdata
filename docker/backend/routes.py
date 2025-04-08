@@ -7,27 +7,27 @@ app = Flask(__name__)
 CORS(app)
 process = DataProcessor()
 
-@app.route("/fetch-label-count/", methods=["GET"])
+@app.route("/fetch-label-count", methods=["GET"])
 def label_count():
     return jsonify(process.fetch_label_count())
 
-@app.route("/fetch-most-frequent-word/", methods=["GET"])
+@app.route("/fetch-most-frequent-word", methods=["GET"])
 def most_frequent():
     disaster_type = request.args.get("disaster_type")
     return jsonify(process.fetch_most_frequent(disaster_type))
 
-@app.route("/fetch-posts-over-time/")
+@app.route("/fetch-posts-over-time")
 def posts_time():
     disaster_type = request.args.get("disaster_type")
     if not disaster_type:
         return jsonify({"error": "label must be provided"}), 400
     return jsonify(process.fetch_posts_over_time(disaster_type))
 
-@app.route("/fetch-top-disaster-last-day/", methods = ["GET"])
+@app.route("/fetch-top-disaster-last-day", methods = ["GET"])
 def top_disaster():
     return jsonify(process.fetch_top_disaster_last_day())
 
-@app.route("/fetch-text-from-label/", methods=["GET"])
+@app.route("/fetch-text-from-label", methods=["GET"])
 def view_feed_data():
     disaster_type = request.args.get("disaster_type")
     return Response(

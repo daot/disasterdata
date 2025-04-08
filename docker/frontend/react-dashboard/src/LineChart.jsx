@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { Line } from "react-chartjs-2";
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from "chart.js";
 
-const API_HOST = process.env.API_HOST;
+const API_HOST = process.env.REACT_APP_API_HOST;
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
@@ -29,8 +29,7 @@ const LineChart = () => {
     const tempData = {};
   
     for (const label of disasterTypes) {
-      //const response = await fetch(`/fetch-posts-over-time/?disaster_type=${label}`);
-      const response = await fetch(API_HOST + `/fetch-posts-over-time/?disaster_type=${label}`);
+      const response = await fetch(API_HOST + `/fetch-posts-over-time?disaster_type=${label}`);
       const data = await response.json();
       tempData[label] = data;
       data.forEach(item => allTimestamps.add(item.timestamp));

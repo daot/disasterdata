@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-const API_HOST = "https://api.disasterdata.duckdns.org";
+const API_HOST = process.env.REACT_APP_API_HOST;
 
 const useFetchCoordinates = () => {
   const [coordinates, setCoordinates] = useState([]);
@@ -8,7 +8,6 @@ const useFetchCoordinates = () => {
   useEffect(() => {
     const fetchCoordinates = async () => {
       try {
-        //const response = await fetch("http://localhost:5000/fetch-location-coordinates");
         const response = await fetch(API_HOST + `/fetch-location-coordinates`);
         if (!response.ok) {
           throw new Error("Failed to fetch coordinates");

@@ -18,3 +18,5 @@ pyproject.toml
 *.tar.gz
 .env
 __pycache__
+local-compose.yml
+config/

@@ -1,8 +1,8 @@
-const API_HOST = "https://api.disasterdata.duckdns.org";
+const API_HOST = process.env.REACT_APP_API_HOST;
 
 export const fetchWordData = async () => {
     try {
-        const response = await fetch(API_HOST + "/fetch-most-frequent-word/");
+        const response = await fetch(API_HOST + "/fetch-most-frequent-word");
         const data = await response.json();
 
         if (data && Array.isArray(data["count of each word"])) {
