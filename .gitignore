@@ -17,4 +17,5 @@ pyproject.toml
 !merged-reduced.tsv
 *.tar.gz
 .env
+myenv/
 __pycache__
