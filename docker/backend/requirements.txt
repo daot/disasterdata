@@ -9,3 +9,5 @@ inflect
 us
 python-dotenv
 flask-cors
+redis
+Flask-APScheduler

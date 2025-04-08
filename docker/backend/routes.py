@@ -1,11 +1,24 @@
 from flask import Flask, jsonify, request, Response
+from flask_apscheduler import APScheduler
 from data_processor import DataProcessor
 import json
 from flask_cors import CORS
+import logging
 
 app = Flask(__name__)
 CORS(app)
+logger = logging.getLogger(__name__)
 process = DataProcessor()
+scheduler = APScheduler()
+scheduler.api_enabled = True
+scheduler.init_app(app)
+
+@scheduler.task('interval', id='get_new_posts', seconds=60, misfire_grace_time=900)
+def update_cache():
+    process.fetch_data()
+    print('Fetched data')
+
+scheduler.start()
 
 @app.route("/fetch-label-count", methods=["GET"])
 def label_count():
