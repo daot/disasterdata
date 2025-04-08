@@ -19,3 +19,5 @@ pyproject.toml
 .env
 myenv/
 __pycache__
+node_modules
+react-dashboard/node_modules/
