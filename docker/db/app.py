@@ -1,5 +1,4 @@
 from flask import Flask, request
-import pandas as pd
 import psycopg2
 import os
 import hashlib
