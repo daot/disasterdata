@@ -58,7 +58,7 @@ const Feed = ({ selectedDisaster }) => {
 
     return (
       <div>
-          <div className="tweet-container">
+          <div className="tweet-container mt-3">
               {tweets.length === 0 ? (
                   <p>No tweets available.</p>
               ) : (

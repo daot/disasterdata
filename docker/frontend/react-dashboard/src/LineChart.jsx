@@ -13,14 +13,15 @@ const LineChart = () => {
   });
 
   const getColor = (disasterType) => {
+    const style = getComputedStyle(document.documentElement)
     const colorMap = {
-      hurricane: "#6272a4",
-      flood: "#50fa7b",
-      wildfire: "#ffb86c",
-      tornado: "#bd93f9",
-      earthquake: "#f1fa8c",
+      hurricane: style.getPropertyValue('--purple'),
+      flood: style.getPropertyValue('--green'),
+      wildfire: style.getPropertyValue('--red'),
+      tornado: style.getPropertyValue('--yellow'),
+      earthquake: style.getPropertyValue('--orange'),
     };
-    return colorMap[disasterType] || "#ffffff"; 
+    return colorMap[disasterType] || style.getPropertyValue('--foreground-color'); 
   };
 
   const fetchPostsOverTime = useCallback(async () => {
@@ -95,7 +96,7 @@ const LineChart = () => {
   };
 
   return (
-    <div style={{ width: "450px", height: "350px", margin: "0 auto" }}>
+    <div style={{ maxWidth: "450px", width: "100%", height: "100%", margin: "0 auto" }}>
       <Line data={chartData} options={options} />
     </div>
   );

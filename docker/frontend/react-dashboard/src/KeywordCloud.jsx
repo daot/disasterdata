@@ -79,6 +79,7 @@ const KeywordCloud = React.memo(({ selectedDisasterType }) => {
       ) : words.length > 0 ? (
         <WordCloud
           data={words}
+          font="inherit"
           fontSize={fontSize}
           rotate={0}
           padding={3}

@@ -53,7 +53,7 @@ const HeatMap = () => {
   }, [map, coordinates]); // Only update when coordinates change
 
   return (
-    <div id="heatmap" style={{ height: "250px", background: "lightgray" }}></div>
+    <div id="heatmap" className="mt-3" style={{ height: "250px", background: "lightgray" }}></div>
   );
 };
 

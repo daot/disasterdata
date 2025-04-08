@@ -28,7 +28,14 @@ const TMDT = () => {
         return () => clearInterval(intervalId);
     }, []);
 
-    if (loading) return <p>Loading...</p>;
+    if (loading) return (
+        <Card className="shadow-sm" style={{ height: "100px"}}>
+            <Card.Body>
+                <Card.Title>Top Mentioned Disaster In The Last 24 Hrs</Card.Title>
+                    <div style={{ fontSize: "1.25rem"}}>Loading</div>
+            </Card.Body>
+        </Card>
+    );;
 
     const capitalizeFirstLetter = (str) => {
         return str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : "";
@@ -37,10 +44,10 @@ const TMDT = () => {
     return (
         <Card className="shadow-sm" style={{ height: "100px"}}>
             <Card.Body>
-                <Card.Title style={{ fontSize: "0.75rem" }}>Top Mentioned Disaster and Location In The Last 24 Hrs</Card.Title>
-                    <p style={{ fontSize: "1.25rem", fontWeight: "bold"}}>
+                <Card.Title>Top Mentioned Disaster In The Last 24 Hrs</Card.Title>
+                    <div style={{ fontSize: "1.25rem"}}>
                         Disaster: {capitalizeFirstLetter(topDisaster.top_label)}, Location: {topDisaster.location ? `(${topDisaster.location})` : ""}
-                    </p>
+                    </div>
             </Card.Body>
         </Card>
     );

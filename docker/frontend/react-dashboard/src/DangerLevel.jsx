@@ -4,7 +4,8 @@ import { Card } from "react-bootstrap";
 const API_HOST = process.env.REACT_APP_API_HOST;
 
 const DangerLevel = () => {
-    const [dangerLevel, setDangerLevel] = useState({ label: "None", color: "#50fa7b", disasterType: "", location: "" });
+    const style = getComputedStyle(document.documentElement)
+    const [dangerLevel, setDangerLevel] = useState({ label: "None", color: style.getPropertyValue('--green'), disasterType: "", location: "" });
 
     useEffect(() => {
         const fetchDangerLevel = async () => {
@@ -19,10 +20,10 @@ const DangerLevel = () => {
                     return;
                 }
 
-                let color = "#50fa7b"; // Default green for 'None'
-                if (data.danger_level === "high") color = "red";
-                else if (data.danger_level === "moderate") color = "orange";
-                else if (data.danger_level === "low") color = "gold";
+                let color = style.getPropertyValue('--green'); // Default green for 'None'
+                if (data.danger_level === "high") color = style.getPropertyValue('--red');
+                else if (data.danger_level === "moderate") color = style.getPropertyValue('--orange');
+                else if (data.danger_level === "low") color = style.getPropertyValue('--yellow');
 
                 setDangerLevel({
                     label: data.danger_level.charAt(0).toUpperCase() + data.danger_level.slice(1),
@@ -46,10 +47,10 @@ const DangerLevel = () => {
     return (
         <Card className="shadow-sm" style={{ height: "100px", border: `2px solid ${dangerLevel.color}` }}>
             <Card.Body>
-                <Card.Title style={{ fontSize: "0.75rem" }}>Danger Level</Card.Title>
-                <p style={{ fontSize: "1.25rem", fontWeight: "bold", color: dangerLevel.color }}>
+                <Card.Title>Danger Level</Card.Title>
+                <div style={{ fontSize: "1.25rem", fontWeight: "bold", color: dangerLevel.color }}>
                     {dangerLevel.label}
-                </p>
+                </div>
             </Card.Body>
         </Card>
     );
