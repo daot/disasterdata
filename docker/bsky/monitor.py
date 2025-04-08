@@ -167,7 +167,7 @@ async def process_posts(session, queue):
 
         ## Implementing a minimum word count
         # SKIP posts that do not meet the minimum word count
-        min_words = 10
+        min_words = 8
         if len(text.split()) < min_words:
             continue
 
@@ -194,6 +194,14 @@ async def process_posts(session, queue):
         valid_labels = ["hurricane", "flood", "tornado", "wildfire", "earthquake"]
         if label not in valid_labels:
             logger.error("Post is not relevant")
+            if query == "earthquake":
+                logger.info(
+                    "[%s] [%s] (earthquake): \n%.150s%s",
+                    timestamp,
+                    label,
+                    text.replace("\n", " "), 
+                    ("..." if len(text) > 150 else ""),
+                )
             continue
 
         save_post(post_id, author, handle, timestamp, query, text, cleaned, label, location, sentiment)
