@@ -167,7 +167,7 @@ async def process_posts(session, queue):
 
         ## Implementing a minimum word count
         # SKIP posts that do not meet the minimum word count
-        min_words = 5
+        min_words = 10
         if len(text.split()) < min_words:
             continue
 
