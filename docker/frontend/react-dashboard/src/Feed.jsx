@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 
-const API_HOST = "https://api.disasterdata.duckdns.org";
+const API_HOST = process.env.API_HOST;
 
 const Feed = ({ selectedDisaster }) => {
     const [tweets, setTweets] = useState([]);

@@ -3,7 +3,7 @@ import { Pie } from "react-chartjs-2";
 import { Card } from "react-bootstrap";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 
-const API_HOST = "https://api.disasterdata.duckdns.org";
+const API_HOST = process.env.API_HOST;
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 

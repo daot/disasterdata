@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import WordCloud from "react-d3-cloud";
 import { scaleLinear } from "d3-scale";
 
-const API_HOST = "https://api.disasterdata.duckdns.org";
+const API_HOST = process.env.API_HOST;
 
 const disasterTypes = ["hurricane", "flood", "wildfire", "tornado", "earthquake"];
 

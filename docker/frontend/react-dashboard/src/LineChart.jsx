@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { Line } from "react-chartjs-2";
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from "chart.js";
 
-const API_HOST = "https://api.disasterdata.duckdns.org";
+const API_HOST = process.env.API_HOST;
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
