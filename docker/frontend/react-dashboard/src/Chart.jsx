@@ -73,7 +73,7 @@ const Graph = () => {
       legend: {
         position: "left",
         labels: {
-          font: { size: 9 },
+          font: { size: 8 },
           color: "white",
         },
       },
