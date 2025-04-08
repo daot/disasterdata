@@ -141,6 +141,8 @@ def get_latest_posts():
 
     posts = []
     latest_timestamp = start_timestamp
+
+
     for row in rows:
         post = {
             "id": row[0],
