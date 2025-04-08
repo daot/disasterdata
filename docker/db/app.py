@@ -90,7 +90,7 @@ def add_row():
                 )
                 conn.commit()
     except psycopg2.IntegrityError:
-        logger.error("Post already in db")
+        logger.error("Post already in db!!")
         return {"error": "Post already in db"}, 400
 
     logger.info(f'Row added successfully, "id": {request_data["id"]}')

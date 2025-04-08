@@ -193,15 +193,7 @@ async def process_posts(session, queue):
         # Do not store irrelevant posts
         valid_labels = ["hurricane", "flood", "tornado", "wildfire", "earthquake"]
         if label not in valid_labels:
-            logger.error("Post is not relevant")
-            if query == "earthquake":
-                logger.info(
-                    "[%s] [%s] (earthquake): \n%.150s%s",
-                    timestamp,
-                    label,
-                    text.replace("\n", " "), 
-                    ("..." if len(text) > 150 else ""),
-                )
+            logger.error("Post is not relevant!!")
             continue
 
         save_post(post_id, author, handle, timestamp, query, text, cleaned, label, location, sentiment)
