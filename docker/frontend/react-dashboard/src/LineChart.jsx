@@ -15,17 +15,17 @@ const LineChart = () => {
   const getColor = (disasterType) => {
     const style = getComputedStyle(document.documentElement)
     const colorMap = {
-      hurricane: style.getPropertyValue('--purple'),
-      flood: style.getPropertyValue('--green'),
-      wildfire: style.getPropertyValue('--red'),
-      tornado: style.getPropertyValue('--yellow'),
-      earthquake: style.getPropertyValue('--orange'),
+      hurricane: style.getPropertyValue('--yellow'),
+      flood: style.getPropertyValue('--red'),
+      wildfire: style.getPropertyValue('--green'),
+      tornado: style.getPropertyValue('--orange'),
+      earthquake: style.getPropertyValue('--purple'),
     };
     return colorMap[disasterType] || style.getPropertyValue('--foreground-color'); 
   };
 
   const fetchPostsOverTime = useCallback(async () => {
-    const disasterTypes = ["hurricane", "flood", "wildfire", "tornado"];
+    const disasterTypes = ["hurricane", "flood", "wildfire", "tornado", "earthquake"];
     const allTimestamps = new Set();
     const tempData = {};
   
