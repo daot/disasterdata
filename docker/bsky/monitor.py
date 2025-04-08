@@ -41,9 +41,9 @@ def get_location(text):
         logger.error("Skipping empty post during location extraction.")
         return None
     try:
-        locs = locations(text, NLP)
-        if len(locs) != 0:  # In case of multiple locations only return the first one
-            return locs[0]
+        loc = locations(text, NLP) # Changed to only return one location
+        if loc: 
+            return loc
         else:
             return None
     except Exception as e:

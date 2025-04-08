@@ -89,13 +89,15 @@ def clean_dataframe(df):
 # Get the named entities that are locations from a document
 def locations(text, nlp=get_nlp()):
     doc = nlp(text)
-    locs = []
     for ent in doc.ents:
         #if ent.label_ == "GPE" or ent.label_ == "LOC":
         if ent.label_ == "GPE":
-            locs.append(ent.text)
-
-    return locs
+            loc = ent.text
+            if not re.search(r"[^a-zA-Z\s.,]", loc):
+                return loc
+            else:
+                return None
+    return None
 
 def preprocess_dataframe(df):
     nlp=get_nlp()
