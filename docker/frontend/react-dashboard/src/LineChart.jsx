@@ -18,7 +18,7 @@ const LineChart = () => {
       flood: "#50fa7b",
       wildfire: "#ffb86c",
       tornado: "#bd93f9",
-      blizzard: "#f1fa8c",
+      earthquake: "#f1fa8c",
     };
     return colorMap[disasterType] || "#ffffff"; 
   };
