@@ -122,7 +122,7 @@ def edit_row():
 
 @app.route("/get_latest_posts", methods=["GET"])
 def get_latest_posts():
-    request_data = request.form.to_dict()
+    request_data = request.args.to_dict()
     start_timestamp = request_data.get("start_timestamp", "1970-01-01T00:00:00")
 
     with get_db_connection() as conn:
@@ -138,6 +138,8 @@ def get_latest_posts():
 
     posts = []
     latest_timestamp = start_timestamp
+
+
     for row in rows:
         post = {
             "id": row[0],
