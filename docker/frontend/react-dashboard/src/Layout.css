@@ -1,118 +1,118 @@
 :root {
-    --background-color: #282a36;
-    --current-line: #44475a;
-    --foreground-color: #f8f8f2;
-    --comment-color: #6272a4;
-    --cyan: #8be9fd;
-    --green: #50fa7b;
-    --orange: #ffb86c;
-    --pink: #ff79c6;
-    --purple: #bd93f9;
-    --red: #ff5555;
-    --yellow: #f1fa8c;
-  }
-  
-  body {
-    background-color: var(--background-color) !important;
-    color: var(--foreground-color) !important;
-    margin: 0;
-    padding: 0;
-    font-family: 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', sans-serif;
-  }
-  
-  .layout-container {
-    background-color: var(--background-color);
-    color: var(--foreground-color);
-    min-height: 100vh;
-  }
-  
-  .sidebar {
-    background-color: var(--current-line);
-    color: var(--foreground-color);
-    padding: 15px;
-    height: 100vh;
-  }
-  
-  .sidebar .nav-link {
-    color: var(--foreground-color) !important;
-    transition: color 0.3s ease-in-out;
-  }
-  
-  .sidebar .nav-link:hover {
-    color: var(--purple) !important;
-  }
-  
-  .main-content {
-    background-color: var(--background-color);
-    color: var(--foreground-color);
-    padding: 20px;
-  }
-  
-  .card {
-    background-color: var(--current-line) !important;
-    color: var(--foreground-color) !important;
-    border: none;
-  }
-  
-  .card-title {
-    color: var(--white) !important;
-  }
-  
-  .button-group .btn{
-    color: var(--foreground-color);
-    padding: 2px 8px;
-    font-size: 12px;
-    line-height: 1.25;
-    border: 1px solid transparent;
-    background-color: var(--purple);
-  }
-  
-  .button-group .btn:hover {
-    background-color: var(--pink);
-    border-color: var(--pink);
-  }
+  --background-color: #282a36;
+  --current-line: #44475a;
+  --foreground-color: #f8f8f2;
+  --comment-color: #6272a4;
+  --cyan: #8be9fd;
+  --green: #50fa7b;
+  --orange: #ffb86c;
+  --pink: #ff79c6;
+  --purple: #bd93f9;
+  --red: #ff5555;
+  --yellow: #f1fa8c;
+}
 
-  .button-group .btn-primary {
-    background-color: var(--cyan) !important;
-    border-color: var(--cyan) !important;
-    color: var(--background-color) !important;
-  }
-  
-  .button-group .btn-outline-primary {
-    padding: 2px 8px;
-    font-size: 12px;
-    line-height: 1.25;
-  }
-  
-  .tweet-container {
-    max-height: 250px;
-    overflow-y: auto;
-    padding: 10px;
-    border-radius: 5px;
-    scroll-behavior: smooth; /* Enables smooth scrolling */ 
-  }
+body {
+  background-color: var(--background-color) !important;
+  color: var(--foreground-color) !important;
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', sans-serif;
+}
 
-  .tweet {
-    margin-bottom: 10px;  /* Space between each tweet */
-    padding: 10px;        /* Padding around each tweet */
-    border-bottom: 1px solid #ddd;  /* Optional: Divider between tweets */
-  }
+.layout-container {
+  background-color: var(--background-color);
+  color: var(--foreground-color);
+  min-height: 100vh;
+}
 
-  .tweet-header {
-    font-size: 0.9rem;
-    margin-bottom: 10px;  /* Space between header and tweet text */
-  }
+.sidebar {
+  background-color: var(--current-line);
+  color: var(--foreground-color);
+  padding: 15px;
+  height: 100vh;
+}
 
-  .tweet-header strong {
-    color: #8be9fd;  /* Optional: Style the author name */
-    margin-right: 10px;
-  }
+.sidebar .nav-link {
+  color: var(--foreground-color) !important;
+  transition: color 0.3s ease-in-out;
+}
 
-  .tweet-header small {
-    color: #bd93f9;  /* Optional: Style the timestamp */
-  }
+.sidebar .nav-link:hover {
+  color: var(--purple) !important;
+}
 
-  .tweet-text p {
-    font-size: 1rem;  /* Optional: Style the tweet text */
-    color: #f8f8f2;
-  }
+.main-content {
+  background-color: var(--background-color);
+  color: var(--foreground-color);
+  padding: 20px;
+}
+
+.card {
+  background-color: var(--current-line) !important;
+  color: var(--foreground-color) !important;
+  border: none;
+}
+
+.card-title {
+  color: var(--white) !important;
+}
+
+.button-group .btn{
+  color: var(--foreground-color);
+  padding: 2px 8px;
+  font-size: 12px;
+  line-height: 1.25;
+  border: 1px solid transparent;
+  background-color: var(--purple);
+}
+
+.button-group .btn:hover {
+  background-color: var(--pink);
+  border-color: var(--pink);
+}
+
+.button-group .btn-primary {
+  background-color: var(--cyan) !important;
+  border-color: var(--cyan) !important;
+  color: var(--background-color) !important;
+}
+
+.button-group .btn-outline-primary {
+  padding: 2px 8px;
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.tweet-container {
+  max-height: 250px;
+  overflow-y: auto;
+  padding: 10px;
+  border-radius: 5px;
+  scroll-behavior: smooth; /* Enables smooth scrolling */ 
+}
+
+.tweet {
+  margin-bottom: 10px;  /* Space between each tweet */
+  padding: 10px;        /* Padding around each tweet */
+  border-bottom: 1px solid #ddd;  /* Optional: Divider between tweets */
+}
+
+.tweet-header {
+  font-size: 0.9rem;
+  margin-bottom: 10px;  /* Space between header and tweet text */
+}
+
+.tweet-header strong {
+  color: #8be9fd;  /* Optional: Style the author name */
+  margin-right: 10px;
+}
+
+.tweet-header small {
+  color: #bd93f9;  /* Optional: Style the timestamp */
+}
+
+.tweet-text p {
+  font-size: 1rem;  /* Optional: Style the tweet text */
+  color: #f8f8f2;
+}

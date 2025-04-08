@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Card } from "react-bootstrap";
 
-const API_HOST = "https://api.disasterdata.duckdns.org";
+const API_HOST = process.env.REACT_APP_API_HOST;
 
 const DangerLevel = () => {
     const [dangerLevel, setDangerLevel] = useState({ label: "None", color: "#50fa7b", disasterType: "", location: "" });
@@ -37,6 +37,10 @@ const DangerLevel = () => {
         };
 
         fetchDangerLevel();
+
+        const intervalId = setInterval(fetchDangerLevel, 60000);
+
+        return () => clearInterval(intervalId);
     }, []);
 
     return (
