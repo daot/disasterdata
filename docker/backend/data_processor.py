@@ -68,7 +68,7 @@ class DataProcessor:
         """Fetching data from the API URL and converting to dataframe"""
         if self.latest_timestamp:
             timestamp = self.latest_timestamp.strftime("%Y-%m-%dT%H:%M:%S")
-            response = requests.get(f"{self.self.api_url}/get_latest_posts?start_timestamp={timestamp}")
+            response = requests.get(f"{self.api_url}/get_latest_posts?start_timestamp={timestamp}")
 
             if response.status_code != 200:
                 return None
