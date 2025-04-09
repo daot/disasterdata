@@ -12,25 +12,7 @@ import inflect
 import redis
 
 load_dotenv()
-API_URL=os.getenv('API_URL')
-p = inflect.engine()
-DATABASE = "location_cache.db"
 nltk.download("stopwords")
-
-stop_words = set(stopwords.words("english"))
-additional_stop_words = [
-    'tornado', 
-    'hurricane', 
-    'wildfire', 
-    'earthquake', 
-    'flood',
-    'flooding',
-    'watchedskysocialappalerts', 
-    'hundred',
-    'thousand'
-]
-stop_words.update((additional_stop_words))
-stop_words.update({p.number_to_words(i) for i in range(0,1001)})
 
 class DataProcessor:
     def __init__(self):
@@ -43,6 +25,25 @@ class DataProcessor:
         #all timestamps should be in pd.Timestamp format 
         self.latest_timestamp = self.load_latest_timestamp()
         self.fetch_data()
+
+        self.api_url=os.getenv('API_URL')
+        self.location_database = os.getenv('CACHE_FILE')
+
+        p = inflect.engine()
+        self.stop_words = set(stopwords.words("english"))
+        additional_stop_words = [
+            'tornado', 
+            'hurricane', 
+            'wildfire', 
+            'earthquake', 
+            'flood',
+            'flooding',
+            'watchedskysocialappalerts', 
+            'hundred',
+            'thousand'
+        ]
+        self.stop_words.update((additional_stop_words))
+        self.stop_words.update({p.number_to_words(i) for i in range(0,1001)})
 
     def load_latest_timestamp(self):
         latest_timestamp = self.redis_cli.get("latest_timestamp")
@@ -67,12 +68,12 @@ class DataProcessor:
         """Fetching data from the API URL and converting to dataframe"""
         if self.latest_timestamp:
             timestamp = self.latest_timestamp.strftime("%Y-%m-%dT%H:%M:%S")
-            response = requests.get(f"{API_URL}/get_latest_posts?start_timestamp={timestamp}")
+            response = requests.get(f"{self.self.api_url}/get_latest_posts?start_timestamp={timestamp}")
 
             if response.status_code != 200:
                 return None
         else:
-            response = requests.get(f"{API_URL}/get_latest_posts") # grab everything if no latest
+            response = requests.get(f"{self.api_url}/get_latest_posts") # grab everything if no latest
         
         # Update the latest timestamp
         data = response.json()

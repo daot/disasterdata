@@ -174,8 +174,8 @@ async def process_posts(session, queue):
         post = q[1]
         post_id = post.uri
         timestamp = (
-            dateutil.parser.parse(post.record.created_at, fuzzy=True)  # UTC
-            .astimezone(timezone.utc)
+            dateutil.parser.parse(post.record.created_at, fuzzy=True) 
+            .astimezone(timezone.utc)  # UTC
             .isoformat()
         )
         text = post.record.text
