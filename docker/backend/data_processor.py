@@ -24,9 +24,8 @@ class DataProcessor:
         self.cache_df = self.load_cache_data()
         #all timestamps should be in pd.Timestamp format 
         self.latest_timestamp = self.load_latest_timestamp()
-        self.fetch_data()
 
-        self.api_url=os.getenv('API_URL')
+        self.api_url = os.getenv('API_URL')
         self.location_database = os.getenv('CACHE_FILE')
 
         p = inflect.engine()
@@ -44,6 +43,7 @@ class DataProcessor:
         ]
         self.stop_words.update((additional_stop_words))
         self.stop_words.update({p.number_to_words(i) for i in range(0,1001)})
+        self.fetch_data()
 
     def load_latest_timestamp(self):
         latest_timestamp = self.redis_cli.get("latest_timestamp")

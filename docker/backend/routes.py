@@ -16,11 +16,11 @@ scheduler.init_app(app)
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
-        format="%(asctime)s - %(levelname)s - %(message)s",
-        handlers=[
-            logging.StreamHandler(sys.stdout),
-        ],
-    )
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+    ],
+)
 
 @scheduler.task('interval', id='get_new_posts', seconds=60, misfire_grace_time=900)
 def update_cache():
