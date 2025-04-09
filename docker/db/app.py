@@ -229,7 +229,7 @@ def get_location():
                 FROM locations 
                 WHERE norm_loc = %s
                 """,
-                (loc),
+                (loc,),
             )
             row = cur.fetchone()
     
