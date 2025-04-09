@@ -11,8 +11,10 @@ from nltk.corpus import stopwords
 import inflect
 import redis
 
-
 load_dotenv()
+API_URL=os.getenv('API_URL')
+p = inflect.engine()
+DATABASE = "location_cache.db"
 nltk.download("stopwords")
 
 stop_words = set(stopwords.words("english"))
