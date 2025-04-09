@@ -69,6 +69,19 @@ const KeywordCloud = React.memo(({ selectedDisasterType }) => {
     .range([10, 50]);
 
   const fontSize = (word) => fontScale(word.value);
+  function randomNordColor() {
+    const style = getComputedStyle(document.documentElement)
+    const colorMap = [
+      style.getPropertyValue('--yellow'),
+      style.getPropertyValue('--red'),
+      style.getPropertyValue('--green'),
+      style.getPropertyValue('--orange'),
+      style.getPropertyValue('--purple'),
+    ];
+    
+    const randomIndex = Math.floor(Math.random() * colorMap.length);
+    return colorMap[randomIndex];
+  }
 
   return (
     <div style={{ width: "100%", height: "200px", textAlign: "center" }}>
@@ -85,6 +98,7 @@ const KeywordCloud = React.memo(({ selectedDisasterType }) => {
           padding={3}
           width={400}
           height={200}
+          fill={randomNordColor}
         />
       ) : (
         <p>No keywords available for this disaster type.</p>
