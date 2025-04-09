@@ -9,35 +9,41 @@ import os
 import nltk
 from nltk.corpus import stopwords
 import inflect
+import dateutil.parser
+import urllib.parse
 
 load_dotenv()
-API_URL=os.getenv('API_URL')
-p = inflect.engine()
-DATABASE = "location_cache.db"
 nltk.download("stopwords")
-
-stop_words = set(stopwords.words("english"))
-additional_stop_words = ['tornado', 'hurricane', 'wildfire', 'blizzard', 'earthquake', 'flood', 'watchedskysocialappalerts']
-stop_words.update((additional_stop_words))
-stop_words.update({p.number_to_words(i) for i in range(0,1001)})
 
 class DataProcessor:
     def __init__(self):
+        p = inflect.engine()
+        self.stop_words = set(stopwords.words("english"))
+        additional_stop_words = ['tornado', 'hurricane', 'wildfire', 'blizzard', 'earthquake', 'flood', 'watchedskysocialappalerts']
+        self.stop_words.update((additional_stop_words))
+        self.stop_words.update({p.number_to_words(i) for i in range(0,1001)})
 
-        """Fetches data once to be used across all API calls"""
-        self.df = self.fetch_data()
-    def fetch_data(self):
+        self.location_database = os.getenv('CACHE_FILE')
+        self.api_url = os.getenv('API_URL')
+
+        self.df, self.latest_timestamp = self.fetch_data()
+        self.latest_timestamp = dateutil.parser.parse(self.latest_timestamp, fuzzy=True).strftime("%Y-%m-%dT%H:%M:%SZ")
+    def fetch_data(self, query=""):
 
         """Fetching data from the API URL and converting to dataframe"""
-        response = requests.get(API_URL+"/get_latest_posts")
+        response = requests.get(self.api_url+"/get_latest_posts"+query)
     
         if response.status_code != 200:
             print(f"error: failed to fetch data with status code {response.status_code}")
             return None
         data = response.json()
-        posts = data.get("posts", []) 
-        return pd.DataFrame(posts)
+        posts = data.get("posts", [])
+        return pd.DataFrame(posts), data.get("latest_timestamp")
 
+    def update_cache(self):
+        posts, self.latest_timestamp = self.fetch_data("?start_timestamp="+urllib.parse.quote_plus(self.latest_timestamp))
+        self.posts.append(posts)
+    
     def filter_data(self, since=None, label=None, location=False, specific_location=None):
 
         """Data filtering based on what the other functions need"""
@@ -71,7 +77,7 @@ class DataProcessor:
         """Finds the most common words based on label or over entire dataset"""
         df = self.filter_data(label=disaster_type)
         all_cleaned_text = " ".join(df["cleaned"].astype(str))
-        words = [word for word in all_cleaned_text.split() if word not in stop_words and not word.isdigit() and len(word)> 3]
+        words = [word for word in all_cleaned_text.split() if word not in self.stop_words and not word.isdigit() and len(word)> 3]
         count = Counter(words)
         return [{"keyword": str(word), "count": int(freq)} for word, freq in count.most_common(20)]
     
@@ -135,7 +141,7 @@ class DataProcessor:
     def fetch_location_coordinates(self):
          
         """Fetches coordinates from geocoded_cache.db"""
-        conn = sqlite3.connect(DATABASE)
+        conn = sqlite3.connect(self.location_database)
         cursor = conn.cursor()
         cursor.execute("SELECT latitude, longitude FROM locations")
         rows = cursor.fetchall()

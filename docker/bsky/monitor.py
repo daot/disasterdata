@@ -158,7 +158,7 @@ async def process_posts(session, queue):
         query = q[0]
         post = q[1]
         post_id = post.uri
-        timestamp = dateutil.parser.parse(
+        timestamp = dateutil.parser.parse( # UTC
             post.record.created_at, fuzzy=True
         ).isoformat()
         text = post.record.text
@@ -181,7 +181,7 @@ async def process_posts(session, queue):
 
         logger.info(
             "[%s] [%s: %s] %s (%s): \n%.150s%s",
-            timestamp,
+            timestamp, # UTC
             label,
             sentiment,
             author,
@@ -249,10 +249,10 @@ async def main():
         exit()
 
     if os.environ.get("SINCE") or os.environ.get("UNTIL"):
-        since = dateutil.parser.parse(os.environ.get("SINCE"), fuzzy=True).strftime(
+        since = dateutil.parser.parse(os.environ.get("SINCE"), fuzzy=True).strftime( # CST
             "%Y-%m-%dT%H:%M:%SZ"
         )
-        until = dateutil.parser.parse(os.environ.get("UNTIL"), fuzzy=True).strftime(
+        until = dateutil.parser.parse(os.environ.get("UNTIL"), fuzzy=True).strftime( # CST
             "%Y-%m-%dT%H:%M:%SZ"
         )
     else:
@@ -263,7 +263,7 @@ async def main():
                 )
             }
         )
-        since = (datetime.utcnow() - time_range).strftime("%Y-%m-%dT%H:%M:%SZ")
+        since = (datetime.now() - time_range).strftime("%Y-%m-%dT%H:%M:%SZ") # CST
         until = ""
 
     queue = asyncio.Queue()
