@@ -22,8 +22,8 @@ const HeatMap = () => {
         minZoom: 3,
         maxZoom: 11,
         maxBounds: [
-          [15, -175], // Southwest corner
-          [55, -70], // Northeast corner
+          [-90, -180], // Southwest corner
+          [90, 180], // Northeast corner
         ],
         maxBoundsViscosity: 0.5, // Keeps the map inside bounds
       });
@@ -42,8 +42,8 @@ const HeatMap = () => {
       // Filter points within the US
       const usCoordinates = coordinates.filter(
         (coord) =>
-          coord.latitude >= 15 && coord.latitude <= 55 && // Latitude range
-          coord.longitude >= -175 && coord.longitude <= -70 // Longitude range
+          coord.latitude >= -90 && coord.latitude <= 90 && // Latitude range
+          coord.longitude >= -180 && coord.longitude <= 180 // Longitude range
       );
 
       const heatPoints = usCoordinates.map(coord => [coord.latitude, coord.longitude, 1.0]);
