@@ -136,7 +136,7 @@ class DataProcessor:
         if df.empty:
             return {"error": "disaster type not found"}
         df['timestamp'] = df['timestamp'].apply(lambda x: x.strftime('%Y-%m-%d %H:%M:%S') if pd.notnull(x) else '')
-        return df[['text', 'author', 'timestamp']].to_dict(orient="records")
+        return df[['text', 'handle', 'timestamp']].to_dict(orient="records")
     
     def fetch_location_coordinates(self):
          

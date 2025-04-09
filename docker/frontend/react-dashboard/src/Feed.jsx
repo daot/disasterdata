@@ -68,8 +68,8 @@ const Feed = ({ selectedDisaster }) => {
                       tweet ? (
                           <div key={index} className="tweet">
                             <div className="tweet-header">
-                              <strong>{tweet.author ?? "Unknown Author"}</strong> 
-                              <small>{(new Date(tweet.timestamp)).toString() ?? "No date available"}</small>
+                              <strong>{tweet.handle ?? "Unknown Author"}</strong> 
+                              <small>{(new Date(tweet.timestamp + "Z")).toString() ?? "No date available"}</small>
                               <br />
                             </div>
                             <div className="tweet-text">
