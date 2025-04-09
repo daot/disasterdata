@@ -71,7 +71,7 @@ const Feed = ({ selectedDisaster }) => {
                           <div key={index} className="tweet">
                             <div className="tweet-header">
                               <strong>{tweet.handle ?? "Unknown Author"}</strong> 
-                              <small>{(new Date().toLocaleString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })) ?? "No date available"}</small>
+                              <small>{(new Date(tweet.timestamp + "Z").toLocaleString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true })) ?? "No date available"}</small>
                               <br />
                             </div>
                             <div className="tweet-text">
