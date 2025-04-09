@@ -89,7 +89,7 @@ const Graph = () => {
     <Card className="shadow-sm" style={{ height: "280px" }}>
       <Card.Body>
         <Card.Title>Which Natural Disasters Dominate?</Card.Title>
-        <div style={{ width: "200px", height: "190px", margin: "auto" }}>
+        <div style={{ width: "100%", height: "190px", margin: "auto" }}>
           {loading ? (
             <p>Loading chart...</p>
           ) : error ? (

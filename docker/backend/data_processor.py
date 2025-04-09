@@ -11,10 +11,8 @@ from nltk.corpus import stopwords
 import inflect
 import redis
 
+
 load_dotenv()
-API_URL=os.getenv('API_URL')
-p = inflect.engine()
-DATABASE = "location_cache.db"
 nltk.download("stopwords")
 
 stop_words = set(stopwords.words("english"))
@@ -126,7 +124,7 @@ class DataProcessor:
         """Finds the most common words based on label or over entire dataset"""
         df = self.filter_data(label=disaster_type)
         all_cleaned_text = " ".join(df["cleaned"].astype(str))
-        words = [word for word in all_cleaned_text.split() if word not in stop_words and not word.isdigit() and len(word)> 3]
+        words = [word for word in all_cleaned_text.split() if word not in self.stop_words and not word.isdigit() and len(word)> 3]
         count = Counter(words)
         return [{"keyword": str(word), "count": int(freq)} for word, freq in count.most_common(20)]
     
@@ -182,11 +180,11 @@ class DataProcessor:
         if df.empty:
             return {"error": "disaster type not found"}
         df['timestamp'] = df['timestamp'].apply(lambda x: x.strftime('%Y-%m-%d %H:%M:%S') if pd.notnull(x) else '')
-        return df[['text', 'author', 'timestamp']].to_dict(orient="records")
+        return df[['text', 'handle', 'timestamp']].to_dict(orient="records")
     
     def fetch_location_coordinates(self):
         """Fetches coordinates from geocoded_cache.db"""
-        conn = sqlite3.connect(DATABASE)
+        conn = sqlite3.connect(self.location_database)
         cursor = conn.cursor()
         cursor.execute("SELECT latitude, longitude FROM locations")
         rows = cursor.fetchall()

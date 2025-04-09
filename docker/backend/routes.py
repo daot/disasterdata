@@ -13,12 +13,22 @@ scheduler = APScheduler()
 scheduler.api_enabled = True
 scheduler.init_app(app)
 
+logger = logging.getLogger(__name__)
+logging.basicConfig(
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        handlers=[
+            logging.StreamHandler(sys.stdout),
+        ],
+    )
+
 @scheduler.task('interval', id='get_new_posts', seconds=60, misfire_grace_time=900)
 def update_cache():
+    logger.info("Update cache process started")
     process.fetch_data()
     print('Fetched data')
 
 scheduler.start()
+
 
 @app.route("/fetch-label-count", methods=["GET"])
 def label_count():
