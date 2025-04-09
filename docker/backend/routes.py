@@ -1,15 +1,18 @@
 from flask import Flask, jsonify, request, Response
+from flask_apscheduler import APScheduler
 from data_processor import DataProcessor
 import json
 from flask_cors import CORS
-import time
-import threading
 import logging
-import sys
 
 app = Flask(__name__)
 CORS(app)
+logger = logging.getLogger(__name__)
 process = DataProcessor()
+scheduler = APScheduler()
+scheduler.api_enabled = True
+scheduler.init_app(app)
+
 logger = logging.getLogger(__name__)
 logging.basicConfig(
         format="%(asctime)s - %(levelname)s - %(message)s",
@@ -18,15 +21,14 @@ logging.basicConfig(
         ],
     )
 
+@scheduler.task('interval', id='get_new_posts', seconds=60, misfire_grace_time=900)
 def update_cache():
     logger.info("Update cache process started")
-    while True:
-        try:
-            logger.info("Updating cache...")
-            process.update_cache()
-        except Exception as e:
-            logger.info(f"Error in background task: {e}")
-        time.sleep(60)
+    process.fetch_data()
+    print('Fetched data')
+
+scheduler.start()
+
 
 @app.route("/fetch-label-count", methods=["GET"])
 def label_count():
@@ -66,6 +68,4 @@ def fetch_coordinates():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
-    thread = threading.Thread(target=update_cache, daemon=True)
-    thread.start()
     app.run(host="0.0.0.0", port=5000, debug=True)

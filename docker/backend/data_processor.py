@@ -9,45 +9,93 @@ import os
 import nltk
 from nltk.corpus import stopwords
 import inflect
-import dateutil.parser
-import urllib.parse
+import redis
+
 
 load_dotenv()
 nltk.download("stopwords")
 
+stop_words = set(stopwords.words("english"))
+additional_stop_words = [
+    'tornado', 
+    'hurricane', 
+    'wildfire', 
+    'earthquake', 
+    'flood',
+    'flooding',
+    'watchedskysocialappalerts', 
+    'hundred',
+    'thousand'
+]
+stop_words.update((additional_stop_words))
+stop_words.update({p.number_to_words(i) for i in range(0,1001)})
+
 class DataProcessor:
     def __init__(self):
-        p = inflect.engine()
-        self.stop_words = set(stopwords.words("english"))
-        additional_stop_words = ['tornado', 'hurricane', 'wildfire', 'blizzard', 'earthquake', 'flood', 'watchedskysocialappalerts']
-        self.stop_words.update((additional_stop_words))
-        self.stop_words.update({p.number_to_words(i) for i in range(0,1001)})
+        """Fetches data once to be used across all API calls"""
+        redis_host = os.getenv('REDIS_HOST', 'localhost')
+        redis_port = int(os.getenv('REDIS_PORT', 6379))
 
-        self.location_database = os.getenv('CACHE_FILE')
-        self.api_url = os.getenv('API_URL')
+        self.redis_cli = redis.Redis(host=redis_host, port=redis_port, db=0, decode_responses=True)
+        self.cache_df = self.load_cache_data()
+        #all timestamps should be in pd.Timestamp format 
+        self.latest_timestamp = self.load_latest_timestamp()
+        self.fetch_data()
 
-        self.df, self.latest_timestamp = self.fetch_data()
-        self.latest_timestamp = dateutil.parser.parse(self.latest_timestamp, fuzzy=True).strftime("%Y-%m-%dT%H:%M:%SZ")
-    def fetch_data(self, query=""):
-
-        """Fetching data from the API URL and converting to dataframe"""
-        response = requests.get(self.api_url+"/get_latest_posts"+query)
-    
-        if response.status_code != 200:
-            print(f"error: failed to fetch data with status code {response.status_code}")
+    def load_latest_timestamp(self):
+        latest_timestamp = self.redis_cli.get("latest_timestamp")
+        if latest_timestamp:
+            latest_ts = pd.to_datetime(latest_timestamp, utc=True)
+            return latest_ts
+        else:
             return None
-        data = response.json()
-        posts = data.get("posts", [])
-        return pd.DataFrame(posts), data.get("latest_timestamp")
-
-    def update_cache(self):
-        posts, self.latest_timestamp = self.fetch_data("?start_timestamp="+urllib.parse.quote_plus(self.latest_timestamp))
-        self.posts.append(posts)
     
-    def filter_data(self, since=None, label=None, location=False, specific_location=None):
+    def load_cache_data(self):
+        cache_data = self.redis_cli.get("cache_data")
+        if cache_data:
+            try:
+                df = pd.read_json(cache_data)
+                return df
+            except Exception as e:
+                return pd.DataFrame()
+        else:
+            return pd.DataFrame()
+        
+    def fetch_data(self):
+        """Fetching data from the API URL and converting to dataframe"""
+        if self.latest_timestamp:
+            timestamp = self.latest_timestamp.strftime("%Y-%m-%dT%H:%M:%S")
+            response = requests.get(f"{API_URL}/get_latest_posts?start_timestamp={timestamp}")
 
+            if response.status_code != 200:
+                return None
+        else:
+            response = requests.get(f"{API_URL}/get_latest_posts") # grab everything if no latest
+        
+        # Update the latest timestamp
+        data = response.json()
+        new_latest_timestamp = pd.to_datetime(data.get("latest_timestamp"), utc=True)
+
+        if self.latest_timestamp is None or new_latest_timestamp > self.latest_timestamp:
+            self.latest_timestamp = new_latest_timestamp + timedelta(seconds=1) # so we don't grab last post
+            
+        posts = data.get("posts", [])
+        if not posts:
+            return self.cache_df
+        
+        new_df = pd.DataFrame(posts)
+        new_df["timestamp"] = pd.to_datetime(new_df["timestamp"], utc=True)
+
+        #Merge with existing df
+        self.cache_df = pd.concat([self.cache_df, new_df], ignore_index=True)
+        self.redis_cli.set("cache_data", self.cache_df.to_json(orient="records"))
+        self.redis_cli.set("latest_timestamp", self.latest_timestamp.strftime("%a, %d %b %Y %H:%M:%S GMT"))
+
+        return self.cache_df
+
+    def filter_data(self, since=None, label=None, location=False, specific_location=None):
         """Data filtering based on what the other functions need"""
-        df = self.df.copy()
+        df = self.cache_df.copy() # changed to cache_df
         df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
         if since:
             df = df[df["timestamp"] >= pd.to_datetime(since, utc=True)]
@@ -61,7 +109,7 @@ class DataProcessor:
     
     def fetch_label_count(self):
         """Fetching the count and percentage for each label"""
-        df = self.df
+        df = self.cache_df # changed to cache_df
         count = df["label"].value_counts().to_dict() 
         total_count = df["label"].count()
         results = [
@@ -73,7 +121,6 @@ class DataProcessor:
             "results": results
         }
     def fetch_most_frequent(self, disaster_type):
-
         """Finds the most common words based on label or over entire dataset"""
         df = self.filter_data(label=disaster_type)
         all_cleaned_text = " ".join(df["cleaned"].astype(str))
@@ -82,7 +129,6 @@ class DataProcessor:
         return [{"keyword": str(word), "count": int(freq)} for word, freq in count.most_common(20)]
     
     def fetch_posts_over_time(self, disaster_type):
-
         """Finds the posts per day based on disaster type"""
         df = self.filter_data(label=disaster_type)
         posts_per_day = df.resample("D", on="timestamp").size().reset_index(name="post_count")
@@ -91,7 +137,6 @@ class DataProcessor:
         return posts_per_day.to_dict(orient="records")
 
     def fetch_top_disaster_last_day(self):
-
         """Gets the most popular disaster type, location, and danger level within the past 24 hours"""
         last_day = datetime.utcnow() - timedelta(days=1)
         df = self.filter_data(since=last_day, location=True) #filtering by non-null locations
@@ -130,7 +175,6 @@ class DataProcessor:
             }
 
     def fetch_text_last_day(self, disaster_type):
-
         last_hour = datetime.utcnow() - timedelta(days=1)
         df = self.filter_data(since=last_hour, label=disaster_type)
         if df.empty:
@@ -139,7 +183,6 @@ class DataProcessor:
         return df[['text', 'handle', 'timestamp']].to_dict(orient="records")
     
     def fetch_location_coordinates(self):
-         
         """Fetches coordinates from geocoded_cache.db"""
         conn = sqlite3.connect(self.location_database)
         cursor = conn.cursor()
