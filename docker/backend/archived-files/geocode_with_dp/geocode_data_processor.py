@@ -1,11 +1,9 @@
 import pandas as pd
-import psycopg2
 import redis
 import csv
 import logging
 import os
 import asyncio
-import rapidfuzz
 import re
 import requests
 import aiohttp
@@ -25,27 +23,17 @@ DB_URL = os.getenv('DB_URL')  #location url
 ABBREVIATIONS = {
     "la": "Los Angeles",
     "nyc": "New York City",
-    "sf": "San Francisco"
+    "sf": "San Francisco",
+    "us": "United States",
+    "usa": "United States",
+    "uk": "United Kingdom",
+    "dc": "Washington, D.C.",
+    "on": "Ontario",
+    "ca": "Canada"
 }
 
 # Redis connection
 r = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
-
-# Setup logging
-logging.basicConfig(
-    filename="geocode_debug.log",
-    level=logging.INFO,
-    filemode="w",
-    format="%(asctime)s %(message)s"
-)
-
-def fetch_data():
-    response = requests.get(API_URL+"/get_latest_posts")
-    if response.status_code != 200:
-        return pd.DataFrame()
-    data = response.json()
-    posts = data.get("posts", [])
-    return pd.DataFrame(posts)
 
 async def check_db(norm_loc):
     #Check if location is in the db
@@ -55,7 +43,7 @@ async def check_db(norm_loc):
         async with session.get(f'{DB_URL}/get_location?norm_loc={norm_loc}') as response:
             if response.status == 200:
                 logging.info(f"Location {norm_loc} found in the database.")
-                return response.json()  # Return coordinates (lat, lng)
+                return awaresponse.json()  # Return coordinates (lat, lng)
             elif response.status == 404:
                 logging.info(f"Location {norm_loc} not found in the database.")
                 return None
@@ -140,7 +128,7 @@ async def fetch_geocode(session, location, semaphore):
         return None
     if location.isdigit():
         return None
-        
+
     #Location skipped if in cache
     norm_loc = normalize_location(location)
     cache_data = check_cache(norm_loc)
@@ -183,30 +171,8 @@ async def fetch_geocode(session, location, semaphore):
     logging.error(f"Failed to geocode: {location} (no results returned)")
     return None
 
-async def geocode_locations(df):
-
-    #respecting rate limit with semaphore
-    semaphore = asyncio.Semaphore(MAX_RPS)
-    try: 
-        async with aiohttp.ClientSession() as session:
-            tasks = [fetch_geocode(session, location, semaphore) for location in df["location"]]
-            await asyncio.gather(*tasks)
-    except Exception as e:
-        logging.error(f"Error in geocoding locations: {e}")
-
-#Main function
-async def main():
-    logging.info("Starting program...")
-
-    #r.flushall() for testing purposes only
-    df = fetch_data()
-    if not df.empty:
-        logging.info(f"Fetched {len(df)} posts from API.")
-    else:
-        logging.info("Failed to fetch data from API.")
-    df_cleaned = df[['location']].dropna().drop_duplicates()
-
-    #Loading data asynchronously to speed up process
+async def get_coordinates(location):
+    logging.info(f"Redis size: {r.dbsize()}")
     if (r.dbsize() < 60754):
         await asyncio.gather(
         load_csv("uscities.csv"),
@@ -214,17 +180,10 @@ async def main():
         )
     else:
         logging.info("Redis cache already populated with uscities.csv and worldcities.csv.")
-
-    #Testing purposes only
-    logging.info(f"Redis db size: {r.dbsize()}")
-    logging.info(f"Data for 'Los Angeles': {r.hgetall('Los Angeles')}")
-    logging.info(f"Data for 'Semič': {r.hgetall('Semič')}")
-
-    logging.info(f"Process geocoding of {len(df_cleaned)} locations...")
-    await geocode_locations(df_cleaned)
-
-# Run the main function
-if __name__ == "__main__":
-    asyncio.run(main()) 
-    
-
+    semaphore = asyncio.Semaphore(MAX_RPS)
+    async with aiohttp.ClientSession() as session:
+        result = await fetch_geocode(session, location, semaphore)
+        if result:
+            #return result['norm_loc'], result['lat'], result['lng']
+            return result['lat'], result['lng']
+        return None

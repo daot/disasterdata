@@ -1,6 +1,7 @@
 import pandas as pd
 import requests
 import sqlite3
+import redis
 import asyncio
 import aiohttp
 import re
@@ -38,12 +39,7 @@ async def fetch_data():
                 data = await response.json()
                 posts = data.get("posts", [])
                 return (pd.DataFrame(posts), response.status)
-def us_cities_df():
-    if os.path.exists("uscities.csv") is False:
-        logger.info("uscities.csv file not found")
-        return None
-    return pd.read_csv("uscities.csv", usecols=["city", "lat", "lng"] skiprows=1)
-    
+
 #Create cache table (will change to posgresql table)
 def create_cache():
     with sqlite3.connect(CACHE_FILE) as conn:
@@ -51,7 +47,8 @@ def create_cache():
         conn.execute("""CREATE TABLE IF NOT EXISTS locations(
         standard_location TEXT UNIQUE,
         latitude REAL,
-        longitude REAL)""")
+        longitude REAL,
+        sentiment REAL)""")
     return True
 
 #Checking whether the location is already cached
@@ -84,7 +81,7 @@ def check_cache(norm_loc):
     return None
 
 #Saving new coordinates into cache
-def save_in_cache(standard_location, latitude, longitude):
+def save_in_db(standard_location, latitude, longitude):
     with sqlite3.connect(CACHE_FILE) as conn:
         cursor = conn.cursor()
         cursor.execute("""INSERT OR IGNORE INTO locations (standard_location, latitude, longitude) 
@@ -121,14 +118,14 @@ async def fetch_geocode(session, location, semaphore):
 
     #Location skipped if in cache
     norm_loc = normalize_location(location)
-    if check_cache(norm_loc) is not None:  
+    if check_cache(norm_loc):  
         logging.info(f"Cache hit: {norm_loc}")
         return None 
     
     #Only allowing 5 concurrent tasks
     async with semaphore:
         try:
-            async with session.get(geocode_url.format(location, API_KEY)) as response: #q is location param
+            async with session.get(geocode_url.format(location, API_KEY)) as response: 
                 if response.status == 200:
                     data = await response.json()
                 else:
@@ -145,7 +142,7 @@ async def fetch_geocode(session, location, semaphore):
         API_loc = data["items"][0]["address"]["label"]
 
         #Save into cache and database
-        save_in_cache(norm_loc, lat, lng) 
+        save_in_db(norm_loc, lat, lng) 
 
         #update_posgresql function will be implemented
         logging.info(f"{norm_loc} geocoded as {API_loc} or ({lat}, {lng})")
@@ -159,7 +156,7 @@ async def geocode_locations(df):
     #respecting rate limit with semaphore
     semaphore = asyncio.Semaphore(MAX_RPS)  
     async with aiohttp.ClientSession() as session:
-        tasks = [fetch_geocode(session, location, semaphore) for location in df["location"]]
+        tasks = [fetch_geocode(session, location, semaphore) for location, sentiment in df["location"]]
 
         #process results once complete
         for task in asyncio.as_completed(tasks):
@@ -173,7 +170,7 @@ async def main():
         logging.info("Data fetched successfully.")
 
         #Extracting only non-null, unique locations
-        df_cleaned = df[['location']].dropna().drop_duplicates().reset_index(drop=True) 
+        df_cleaned = df[['location', 'sentiment']].dropna().drop_duplicates().reset_index(drop=True) 
         logging.info(f"Processing {df_cleaned.size} locations...")
         await geocode_locations(df_cleaned)
 
