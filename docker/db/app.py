@@ -42,6 +42,16 @@ def init_table():
                 )
                 """
             )
+            # Also create the locations table
+            cur.execute(
+                """
+                CREATE TABLE IF NOT EXISTS locations (
+                    norm_loc TEXT PRIMARY KEY,
+                    lat REAL NOT NULL,
+                    lng REAL NOT NULL
+                )
+                """
+            )
             conn.commit()
             logger.info("Connected to DB")
 
@@ -80,7 +90,7 @@ def add_row():
                 )
                 conn.commit()
     except psycopg2.IntegrityError:
-        logger.error("Post already in db")
+        logger.error("Post already in db!!")
         return {"error": "Post already in db"}, 400
 
     logger.info(f'Row added successfully, "id": {request_data["id"]}')
@@ -147,6 +157,80 @@ def get_latest_posts():
     logger.info(f"Post till timestamp {latest_timestamp} returned")
     return {"posts": posts, "latest_timestamp": latest_timestamp}
 
+
+@app.route("/add_location", methods=["POST"])
+def add_location():
+    request_data = request.form.to_dict()
+
+    required_fields = {"norm_loc", "lat", "lng"}
+
+    if not required_fields.issubset(request_data.keys()):
+        logger.error(f"Missing required fields")
+        return {"error": "Missing required fields"}, 400
+    
+    # lat and lng to float
+    try:
+        lat = float(request_data.get("lat"))
+        lng = float(request_data.get("lng"))
+    except ValueError:
+        logger.error("Invalid lat or lng value")
+        return {"error": "Invalid lat or lng value"}, 400
+
+    values = (
+        request_data.get("norm_loc"),
+        lat,
+        lng,
+    )
+
+    try:
+        with get_db_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """INSERT INTO locations (norm_loc, lat, lng)
+                    VALUES (%s, %s, %s)""",
+                    values,
+                )
+                conn.commit()
+    except psycopg2.IntegrityError:
+        logger.error("Location already in db")
+        return {"error": "Location already in db"}, 400
+
+    logger.info(f'Row added successfully, "norm_loc": {request_data["norm_loc"]}')
+    return {"message": "Row added successfully", "norm_loc": request_data["norm_loc"]}, 201
+
+@app.route("/get_location", methods=["GET"])
+def get_location():
+    request_data = request.args.to_dict() # Make sure to run as /get_location?norm_loc=LocationName
+    loc = request_data.get("norm_loc")
+
+    if not loc:
+        return {"error": "Missing required field 'norm_loc'"}, 400
+
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT lat, lng
+                FROM locations 
+                WHERE norm_loc = %s
+                """,
+                (loc),
+            )
+            row = cur.fetchone()
+    
+    # return the coordinates
+    if row: 
+        coordinates = {
+            "lat": row[0],
+            "lng": row[1]
+        }
+
+        logger.info(f"Coordinates for {loc} returned")
+        return {"coordinates": coordinates}
+
+
+    logger.info(f"Coordinates for {loc} not yet in database")
+    return {"error": f"Location '{loc}' not found in the database."}, 404
 
 if __name__ == "__main__":
     try:

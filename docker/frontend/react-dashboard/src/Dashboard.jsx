@@ -25,19 +25,19 @@ const Dashboard = () => {
   return (
     <div className="m-0">
       {/* First Row - Stats */}
-      <Row className="m-0">
-      <Col md={3}>
+      <Row className="m-0 d-flex">
+      <Col md={3} className="flex-shrink-1">
           <Card className="shadow-sm" style={{ height: "100px"}}>
-            <Card.Body>
-              <Card.Title>Crisis and Alert</Card.Title>
-              <p> {`${currentTime}`} </p>
+            <Card.Body className="d-flex flex-column justify-items-center">
+              <Card.Title>Dashboard</Card.Title>
+              <div style={{ fontSize: "1.25rem"}}> {`${currentTime}`} </div>
             </Card.Body>
           </Card>
         </Col>
-        <Col md={6}>
+        <Col md={6} className="flex-grow-1">
           <TMDT />
         </Col>
-        <Col md={3}>
+        <Col md={3} className="flex-shrink-1">
           <DangerLevel />
         </Col>
       </Row>
@@ -142,11 +142,11 @@ const Dashboard = () => {
 
       {/* Third Row - Charts */}
       
-      <Row className="mt-3">
-          <Col md={3}>
+      <Row className="mt-3 d-flex">
+          <Col className="flex-grow-1" md={3}>
             <Chart />
           </Col>
-          <Col md={4}>
+          <Col className="flex-grow-1" md={4}>
             <Card className="shadow-sm" style={{ height: "280px" }}>
               <Card.Body>
                 <Card.Title>Top Natural-Disaster Related Terms</Card.Title>
@@ -191,7 +191,7 @@ const Dashboard = () => {
               </Card.Body>
             </Card>
           </Col>
-          <Col md={5}>
+          <Col id="linechart-s" md={5}>
           <Card className="shadow-sm" style={{ height: "280px" }}>
             <Card.Body>
               <Card.Title> Live Disaster Trends</Card.Title>
@@ -200,9 +200,20 @@ const Dashboard = () => {
           </Card>
           </Col>
         </Row>
+        <Row className="mt-3 d-flex">
+        <Col id="linechart-l" className="flex-grow-1">
+        <Card className="shadow-sm" style={{ height: "280px" }}>
+          <Card.Body>
+            <Card.Title> Live Disaster Trends</Card.Title>
+            <LineChart/>
+          </Card.Body>
+        </Card>
+        </Col>
+        </Row>
       </Container>
     </div>
   );
 };
 
 export default Dashboard;
+
