@@ -106,10 +106,10 @@
     border-bottom: 1px solid var(--foreground-color);  /* Optional: Divider between tweets */
   }
 
-  .tweet-header {
-    font-size: 0.9rem;
-    margin-bottom: 10px;  /* Space between header and tweet text */
-  }
+.tweet-header {
+  font-size: 0.9rem;
+  margin-bottom: 10px;  /* Space between header and tweet text */
+}
 
   .tweet-header strong {
     color: var(--frost-lightblue);  /* Optional: Style the author name */

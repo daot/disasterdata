@@ -4,6 +4,7 @@ import sqlite3
 from collections import Counter
 import json
 from datetime import datetime, timedelta
+from geocode_db import get_location_coordinates
 from dotenv import load_dotenv
 import os
 import nltk
@@ -102,17 +103,48 @@ class DataProcessor:
         df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
         if since:
             df = df[df["timestamp"] >= pd.to_datetime(since, utc=True)]
+        if latest:
+            df = df[df["timestamp"] <= pd.to_datetime(latest, utc=True)]
         if label:
             df = df[df["label"] == label]
         if location:
             df = df[df["location"].notna()]
         if specific_location:
             df = df[df["location"]==specific_location]
+        if sentiment:
+            df['sentiment'] = pd.to_numeric(df['sentiment'], errors='coerce')
+            df['sentiment_scaled'] = (df['sentiment'] - df['sentiment'].min()) / (df['sentiment'].max() - df['sentiment'].min())
         return df
+
+    def validate_date_range(self, start_date, end_date):
+        """Validating the date range as provided by user"""
+
+        #No date range provided, default to last 24 hours
+        if start_date is None or end_date is None:
+            start_date = pd.to_datetime(datetime.utcnow() - timedelta(days=1))
+            end_date = pd.to_datetime(datetime.utcnow())
+            return start_date, end_date
+        
+        #Inputed date range accepted for pd.to_datetime format
+        try:
+            start_date = pd.to_datetime(start_date, utc=True)
+            end_date = pd.to_datetime(end_date, utc=True)
+        except ValueError:
+            return {"error": "Invalid date format. Enter date in YYYY-MM-DD format."} 
+
+        if start_date > end_date:
+            return {"error": "Start date must be before end date."}
+
+        return start_date, end_date
     
-    def fetch_label_count(self):
+    def fetch_label_count(self, start_date=None, end_date=None):
         """Fetching the count and percentage for each label"""
         df = self.cache_df # changed to cache_df
+        validation = self.validate_date_range(start_date, end_date)
+        if isinstance(validation, dict) and "error" in validation:
+            return validation
+        start_date, end_date = validation
+        df = self.filter_data(since=start_date, latest=end_date)
         count = df["label"].value_counts().to_dict() 
         total_count = df["label"].count()
         results = [
@@ -123,26 +155,41 @@ class DataProcessor:
             "total label count": int(total_count),
             "results": results
         }
-    def fetch_most_frequent(self, disaster_type):
+    def fetch_most_frequent(self, disaster_type, start_date=None, end_date=None):
         """Finds the most common words based on label or over entire dataset"""
-        df = self.filter_data(label=disaster_type)
+        validation = self.validate_date_range(start_date, end_date)
+        if isinstance(validation, dict) and "error" in validation:
+            return validation
+        start_date, end_date = validation
+
+        df = self.filter_data(since=start_date, latest=end_date, label=disaster_type)
         all_cleaned_text = " ".join(df["cleaned"].astype(str))
         words = [word for word in all_cleaned_text.split() if word not in self.stop_words and not word.isdigit() and len(word)> 3]
         count = Counter(words)
         return [{"keyword": str(word), "count": int(freq)} for word, freq in count.most_common(20)]
     
-    def fetch_posts_over_time(self, disaster_type):
+    def fetch_posts_over_time(self, disaster_type, start_date=None, end_date=None):
         """Finds the posts per day based on disaster type"""
-        df = self.filter_data(label=disaster_type)
+        validation = self.validate_date_range(start_date, end_date)
+        if isinstance(validation, dict) and "error" in validation:
+            return validation
+        
+        start_date, end_date = validation
+        df = self.filter_data(since=start_date, latest=end_date, label=disaster_type)
         posts_per_day = df.resample("D", on="timestamp").size().reset_index(name="post_count")
         posts_per_day["timestamp"] = posts_per_day["timestamp"].dt.strftime("%Y-%m-%d")
         
         return posts_per_day.to_dict(orient="records")
 
-    def fetch_top_disaster_last_day(self):
+    def fetch_top_disaster_location(self, start_date=None, end_date=None):
         """Gets the most popular disaster type, location, and danger level within the past 24 hours"""
-        last_day = datetime.utcnow() - timedelta(days=1)
-        df = self.filter_data(since=last_day, location=True) #filtering by non-null locations
+        validation = self.validate_date_range(start_date, end_date)
+        if isinstance(validation, dict) and "error" in validation:
+            return validation
+        start_date, end_date = validation
+
+        #filtering by non-null locations
+        df = self.filter_data(since=start_date, latest=end_date, location = True) 
         if df.empty:
             return {"Error": "No valid disasters mentioned in the last day"}
         
@@ -153,16 +200,10 @@ class DataProcessor:
         top_label, top_location = top_pair[0][0]
 
         #Filter data again to get only the entries related to the pair
-        df_labloc = self.filter_data(since=last_day, label=top_label, specific_location=top_location)
-        df_labloc['sentiment'] = pd.to_numeric(df['sentiment'], errors='coerce')
-
-        #Using minmax scaling to emphasize the sentiment scores more
-        min_sent = df_labloc['sentiment'].min()
-        max_sent = df_labloc['sentiment'].max()
-        df_labloc['sentiment_scaled'] = (df_labloc['sentiment']-min_sent)/(max_sent-min_sent)
+        df_filtered = self.filter_data(since=start_date, latest=end_date, label=top_label, specific_location=top_location, sentiment=True)
 
         #Danger Level calculated by mean of sentiment scores
-        avg_sentiment = df_labloc['sentiment_scaled'].mean()
+        avg_sentiment = df_filtered['sentiment_scaled'].mean()
         if avg_sentiment <= -0.5:
             danger_level = "high"
         elif avg_sentiment < 0.5:
@@ -177,16 +218,23 @@ class DataProcessor:
             "danger_value": float(avg_sentiment)
             }
 
-    def fetch_text_last_day(self, disaster_type):
-        last_hour = datetime.utcnow() - timedelta(days=1)
-        df = self.filter_data(since=last_hour, label=disaster_type)
+    def fetch_text(self, disaster_type, start_date=None, end_date=None):
+
+        validation = self.validate_date_range(start_date, end_date)
+        if isinstance(validation, dict) and "error" in validation:
+            return validation
+        
+        start_date, end_date = validation
+        df = self.filter_data(since=start_date, latest=end_date, label=disaster_type)
         if df.empty:
             return {"error": "disaster type not found"}
+        
         df['timestamp'] = df['timestamp'].apply(lambda x: x.strftime('%Y-%m-%d %H:%M:%S') if pd.notnull(x) else '')
         return df[['text', 'handle', 'timestamp']].to_dict(orient="records")
     
-    def fetch_location_coordinates(self):
+     def fetch_location_coordinates(self):
         """Fetches coordinates from geocoded_cache.db"""
+        conn = sqlite3.connect(self.location_database)
         conn = sqlite3.connect(self.location_database)
         cursor = conn.cursor()
         cursor.execute("SELECT latitude, longitude FROM locations")
@@ -194,3 +242,4 @@ class DataProcessor:
         conn.close()
 
         return [{"latitude": row[0], "longitude": row[1]} for row in rows]
+
