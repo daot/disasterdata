@@ -11,21 +11,18 @@ import nltk
 from nltk.corpus import stopwords
 import inflect
 import redis
-import asyncio
 
 load_dotenv()
 nltk.download("stopwords")
 
-#Each fetch function validates the start and end parameters as sent from the user 
-class DataProcessor1:
+class DataProcessor:
     def __init__(self):
         """Fetches data once to be used across all API calls"""
         redis_host = os.getenv('REDIS_HOST', 'localhost')
         redis_port = int(os.getenv('REDIS_PORT', 6379))
-        #self.MCR=10
+
         self.redis_cli = redis.Redis(host=redis_host, port=redis_port, db=0, decode_responses=True)
         self.cache_df = self.load_cache_data()
-
         #all timestamps should be in pd.Timestamp format 
         self.latest_timestamp = self.load_latest_timestamp()
 
@@ -100,7 +97,7 @@ class DataProcessor1:
 
         return self.cache_df
 
-    def filter_data(self, since=None, latest=None, label=None, location=False, specific_location=None, sentiment=False):
+    def filter_data(self, since=None, label=None, location=False, specific_location=None):
         """Data filtering based on what the other functions need"""
         df = self.cache_df.copy() # changed to cache_df
         df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
@@ -237,6 +234,7 @@ class DataProcessor1:
     
      def fetch_location_coordinates(self):
         """Fetches coordinates from geocoded_cache.db"""
+        conn = sqlite3.connect(self.location_database)
         conn = sqlite3.connect(self.location_database)
         cursor = conn.cursor()
         cursor.execute("SELECT latitude, longitude FROM locations")

@@ -4,11 +4,16 @@ FROM node:18-alpine as npm
 # Set working directory
 WORKDIR /app
 
-# Copy the React project
-COPY react-dashboard/ .
+ARG REACT_APP_API_HOST
+ENV REACT_APP_API_HOST=$REACT_APP_API_HOST
 
 # Install dependencies
+COPY react-dashboard/package*.json ./
 RUN npm install --legacy-peer-deps
+
+# Copy the React project
+COPY react-dashboard/public ./public
+COPY react-dashboard/src ./src
 
 # Build the React app
 RUN npm run build

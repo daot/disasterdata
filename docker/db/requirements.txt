@@ -2,3 +2,4 @@ Flask
 psycopg2
 python-dotenv
 flask_cors
+python-dateutil

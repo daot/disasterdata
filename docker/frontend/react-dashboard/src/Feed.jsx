@@ -56,9 +56,11 @@ const Feed = ({ selectedDisaster }) => {
     if (loading) return <p>Loading tweets...</p>;
     if (error) return <p>{error}</p>;
 
+    var options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+
     return (
       <div>
-          <div className="tweet-container">
+          <div className="tweet-container mt-3">
               {tweets.length === 0 ? (
                   <p>No tweets available.</p>
               ) : (
@@ -68,8 +70,8 @@ const Feed = ({ selectedDisaster }) => {
                       tweet ? (
                           <div key={index} className="tweet">
                             <div className="tweet-header">
-                              <strong>{tweet.author ?? "Unknown Author"}</strong> 
-                              <small>{tweet.timestamp ?? "No date available"}</small>
+                              <strong>{tweet.handle ?? "Unknown Author"}</strong> 
+                              <small>{(new Date(tweet.timestamp + "Z").toLocaleString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true })) ?? "No date available"}</small>
                               <br />
                             </div>
                             <div className="tweet-text">

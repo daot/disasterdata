@@ -6,6 +6,7 @@ import logging
 import sys
 from dotenv import load_dotenv
 from flask_cors import CORS
+import dateutil.parser
 
 load_dotenv()
 app = Flask(__name__)
@@ -80,6 +81,17 @@ def add_row():
         request_data.get("sentiment"),
     )
 
+    logger.info(
+            "[%s] [%s: %s] %s (%s): \n%.150s%s",
+            values[1], # timestamp, UTC
+            values[7], # label
+            values[9], # sentiment
+            values[3], # author
+            values[4], # handle
+            values[5].replace("\n", " "), # text
+            ("..." if len(values[5]) > 150 else ""),
+        )
+
     try:
         with get_db_connection() as conn:
             with conn.cursor() as cur:
@@ -122,8 +134,9 @@ def edit_row():
 
 @app.route("/get_latest_posts", methods=["GET"])
 def get_latest_posts():
-    request_data = request.form.to_dict()
+    request_data = request.args.to_dict()
     start_timestamp = request_data.get("start_timestamp", "1970-01-01T00:00:00")
+    start_timestamp = dateutil.parser.parse(start_timestamp, fuzzy=True).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     with get_db_connection() as conn:
         with conn.cursor() as cur:
@@ -138,6 +151,8 @@ def get_latest_posts():
 
     posts = []
     latest_timestamp = start_timestamp
+
+
     for row in rows:
         post = {
             "id": row[0],
@@ -214,7 +229,7 @@ def get_location():
                 FROM locations 
                 WHERE norm_loc = %s
                 """,
-                (loc),
+                (loc,),
             )
             row = cur.fetchone()
     

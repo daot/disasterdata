@@ -9,7 +9,7 @@ import json
 import hashlib
 import urllib.parse
 import joblib
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from atproto import AsyncClient
 from textblob import TextBlob
 from pprint import pprint
@@ -41,9 +41,9 @@ def get_location(text):
         logger.error("Skipping empty post during location extraction.")
         return None
     try:
-        locs = locations(text, NLP)
-        if len(locs) != 0:  # In case of multiple locations only return the first one
-            return locs[0]
+        loc = locations(text, NLP)  # Changed to only return one location
+        if loc:
+            return loc
         else:
             return None
     except Exception as e:
@@ -83,7 +83,9 @@ def predict_post(cleaned_text):
         return "other"  # Default label in case of failure
 
 
-def save_post(post_id, author, handle, timestamp, query, text, cleaned, label, location, sentiment):
+def save_post(
+    post_id, author, handle, timestamp, query, text, cleaned, label, location, sentiment
+):
     """Saves a post into the database if it does not already exist."""
     session = requests.Session()
     session.trust_env = False
@@ -108,7 +110,18 @@ def save_post(post_id, author, handle, timestamp, query, text, cleaned, label, l
         logger.error(e)
         logger.error(response.text)
         logger.error(
-            (post_id, author, handle, timestamp, query, text, cleaned, label, location, sentiment)
+            (
+                post_id,
+                author,
+                handle,
+                timestamp,
+                query,
+                text,
+                cleaned,
+                label,
+                location,
+                sentiment,
+            )
         )
         return
     if j_response.get("error"):
@@ -145,11 +158,13 @@ async def fetch_posts(client, queue, queries, since, until):
                 logger.error("Error fetching posts: %s", e)
             await asyncio.sleep(API_TIMEOUT)
 
+
 def analyze_sentiment(text):
     """Analyzes the sentiment of the text and returns decimal value"""
     blob = TextBlob(text)
     polarity = blob.sentiment.polarity
     return polarity
+
 
 async def process_posts(session, queue):
     """Processes and saves posts from the queue."""
@@ -158,16 +173,18 @@ async def process_posts(session, queue):
         query = q[0]
         post = q[1]
         post_id = post.uri
-        timestamp = dateutil.parser.parse(
-            post.record.created_at, fuzzy=True
-        ).isoformat()
+        timestamp = (
+            dateutil.parser.parse(post.record.created_at, fuzzy=True) 
+            .astimezone(timezone.utc)  # UTC
+            .isoformat()
+        )
         text = post.record.text
         author = post.author.display_name
         handle = post.author.handle
 
         ## Implementing a minimum word count
         # SKIP posts that do not meet the minimum word count
-        min_words = 5
+        min_words = 8
         if len(text.split()) < min_words:
             continue
 
@@ -181,7 +198,7 @@ async def process_posts(session, queue):
 
         logger.info(
             "[%s] [%s: %s] %s (%s): \n%.150s%s",
-            timestamp,
+            timestamp,  # UTC
             label,
             sentiment,
             author,
@@ -191,12 +208,23 @@ async def process_posts(session, queue):
         )
 
         # Do not store irrelevant posts
-        valid_labels = ["hurricane", "flood", "tornado", "wildfire", "blizzard"]
+        valid_labels = ["hurricane", "flood", "tornado", "wildfire", "earthquake"]
         if label not in valid_labels:
-            logger.error("Post is not relevant")
+            logger.error("Post is not relevant!!")
             continue
 
-        save_post(post_id, author, handle, timestamp, query, text, cleaned, label, location, sentiment)
+        save_post(
+            post_id,
+            author,
+            handle,
+            timestamp,
+            query,
+            text,
+            cleaned,
+            label,
+            location,
+            sentiment,
+        )
         queue.task_done()
 
 
@@ -249,10 +277,14 @@ async def main():
         exit()
 
     if os.environ.get("SINCE") or os.environ.get("UNTIL"):
-        since = dateutil.parser.parse(os.environ.get("SINCE"), fuzzy=True).strftime(
+        since = dateutil.parser.parse(
+            os.environ.get("SINCE"), fuzzy=True
+        ).strftime(  # CST
             "%Y-%m-%dT%H:%M:%SZ"
         )
-        until = dateutil.parser.parse(os.environ.get("UNTIL"), fuzzy=True).strftime(
+        until = dateutil.parser.parse(
+            os.environ.get("UNTIL"), fuzzy=True
+        ).strftime(  # CST
             "%Y-%m-%dT%H:%M:%SZ"
         )
     else:
@@ -263,7 +295,7 @@ async def main():
                 )
             }
         )
-        since = (datetime.utcnow() - time_range).strftime("%Y-%m-%dT%H:%M:%SZ")
+        since = (datetime.now() - time_range).strftime("%Y-%m-%dT%H:%M:%SZ")  # CST
         until = ""
 
     queue = asyncio.Queue()
