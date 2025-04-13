@@ -100,6 +100,8 @@ class DataProcessor:
 
     def filter_data(self, since=None, latest=None, label=None, location=False, specific_location=None, sentiment=False):
         """Data filtering based on what the other functions need"""
+        df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
+        
         df = self.cache_df.copy() # changed to cache_df
         if since:
             df = df[df["timestamp"] >= pd.to_datetime(since, utc=True)]
