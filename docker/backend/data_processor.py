@@ -58,6 +58,8 @@ class DataProcessor:
         if cache_data:
             try:
                 df = pd.read_json(cache_data)
+                if "timestamp" in df.columns:
+                    df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
                 return df
             except Exception as e:
                 return pd.DataFrame()
@@ -101,6 +103,7 @@ class DataProcessor:
     def filter_data(self, since=None, latest=None, label=None, location=False, specific_location=None, sentiment=False):
         """Data filtering based on what the other functions need"""
         df = self.cache_df.copy() # changed to cache_df
+        df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
         if since:
             df = df[df["timestamp"] >= pd.to_datetime(since, utc=True)]
         if latest:
