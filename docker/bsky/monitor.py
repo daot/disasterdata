@@ -38,7 +38,9 @@ model, label_encoder = joblib.load("data_model/models/lgbm_model_encoder_v1.pkl"
 ### Maximum of 5 requests per second ###
 MAX_RPS = 5  
 semaphore = asyncio.Semaphore(MAX_RPS)
-redis_cli = redis.Redis(host='localhost', port=6379, db=1, decode_responses=True)
+redis_host = os.getenv('REDIS_HOST', 'localhost')
+redis_port = int(os.getenv('REDIS_PORT', 6379))
+redis_cli = redis.Redis(host=redis_host, port=redis_port, db=1, decode_responses=True)
 API_KEY = os.getenv('API_KEY')
 GEOCODE_URL = os.getenv('GEOCODE_URL') #Using HERE API
 
