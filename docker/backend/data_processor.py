@@ -92,6 +92,8 @@ class DataProcessor:
         #Merge with existing df
         self.cache_df = pd.concat([self.cache_df, new_df], ignore_index=True)
         self.redis_cli.set("cache_data", self.cache_df.to_json(orient="records"))
+
+        #redis stores everything as strings, so we need to convert the timestamp to a string
         self.redis_cli.set("latest_timestamp", self.latest_timestamp.strftime("%a, %d %b %Y %H:%M:%S GMT"))
 
         return self.cache_df
@@ -99,7 +101,6 @@ class DataProcessor:
     def filter_data(self, since=None, latest=None, label=None, location=False, specific_location=None, sentiment=False):
         """Data filtering based on what the other functions need"""
         df = self.cache_df.copy() # changed to cache_df
-        df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
         if since:
             df = df[df["timestamp"] >= pd.to_datetime(since, utc=True)]
         if latest:
@@ -119,10 +120,16 @@ class DataProcessor:
         """Validating the date range as provided by user"""
 
         #No date range provided, default to last 24 hours
-        if start_date is None or end_date is None:
-            start_date = pd.to_datetime(datetime.utcnow() - timedelta(days=1))
-            end_date = pd.to_datetime(datetime.utcnow())
-            return start_date, end_date
+        if start_date is None and end_date is None:
+            end_date = pd.to_datetime(datetime.utcnow(), utc=True)
+            start_date = end_date - timedelta(days=1)
+        
+        #If only start_date or only end_date is provided
+        if start_date and not end_date:
+            end_date = self.cache_df["timestamp"].max()
+
+        if end_date and not start_date:
+            start_date = self.cache_df["timestamp"].min()
         
         #Inputed date range accepted for pd.to_datetime format
         try:
@@ -143,6 +150,7 @@ class DataProcessor:
             return validation
         start_date, end_date = validation
 
+        #filter by date range
         df = self.filter_data(since=start_date, latest=end_date)
         count = df["label"].value_counts().to_dict() 
         total_count = df["label"].count()
@@ -161,6 +169,7 @@ class DataProcessor:
             return validation
         start_date, end_date = validation
 
+        #filter by date range and disaster type
         df = self.filter_data(since=start_date, latest=end_date, label=disaster_type)
         all_cleaned_text = " ".join(df["cleaned"].astype(str))
         words = [word for word in all_cleaned_text.split() if word not in self.stop_words and not word.isdigit() and len(word)> 3]
@@ -174,6 +183,7 @@ class DataProcessor:
             return validation
         start_date, end_date = validation
 
+        #filter by date range and disaster type
         df = self.filter_data(since=start_date, latest=end_date, label=disaster_type)
         if df.empty:
             return {"error": "No posts found for the given date range"}
@@ -189,7 +199,7 @@ class DataProcessor:
             return validation
         start_date, end_date = validation
 
-        #filtering by non-null locations
+        #filtering by non-null locations and date range
         df = self.filter_data(since=start_date, latest=end_date, location = True) 
         if df.empty:
             return {"Error": "No valid disasters mentioned in the last day"}
@@ -226,6 +236,7 @@ class DataProcessor:
             return validation
         start_date, end_date = validation
 
+        #filter by date range and disaster type
         df = self.filter_data(since=start_date, latest=end_date, label=disaster_type)
         if df.empty:
             return {"error": "disaster type not found"}
