@@ -31,7 +31,7 @@ def update_cache():
 
 scheduler.start()
 
-
+#127.0.0.1:5000/route_name?start_date=...&end_date=...&(disaster_type)=... is the format for the API calls
 @app.route("/fetch-label-count", methods=["GET"])
 def label_count():
     start_date = request.args.get("start_date", default=None)
@@ -47,7 +47,7 @@ def most_frequent():
         return jsonify({"error": "disaster_type parameter must be provided"}), 400
     return jsonify(process.fetch_most_frequent(disaster_type, start_date, end_date))
 
-@app.route("/fetch-posts-over-time")
+@app.route("/fetch-posts-over-time", methods=["GET"])
 def posts_time():
     start_date = request.args.get("start_date", default=None)
     end_date = request.args.get("end_date", default=None)
@@ -56,7 +56,7 @@ def posts_time():
         return jsonify({"error": "disaster_type parameter must be provided"}), 400
     return jsonify(process.fetch_posts_over_time(disaster_type, start_date, end_date))
 
-@app.route("/fetch-top-disaster-location", methods = ["GET"])
+@app.route("/fetch-top-disaster-location", methods=["GET"])
 def top_disaster():
     start_date = request.args.get("start_date", default=None)
     end_date = request.args.get("end_date", default=None)
@@ -76,7 +76,7 @@ def view_feed_data():
     
 @app.route("/fetch-location-coordinates", methods=["GET"])
 def fetch_coordinates():
-    """API endpoint to return coordinates from geocoded_cache.db"""
+    """API endpoint to return coordinates from location_cache.db"""
     try:
         coordinates = process.fetch_location_coordinates()
         return jsonify(coordinates)

@@ -8,6 +8,7 @@ import re
 import requests
 import aiohttp
 import us
+from urllib.parse import urlparse
 from dotenv import load_dotenv
 
 #Load environment variables
@@ -34,40 +35,6 @@ ABBREVIATIONS = {
 
 # Redis connection
 r = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
-
-async def check_db(norm_loc):
-    #Check if location is in the db
-
-    #response = requests.get(f'{DB_URL}/get_location?norm_loc={norm_loc}')
-    async with aiohttp.ClientSession() as session:
-        async with session.get(f'{DB_URL}/get_location?norm_loc={norm_loc}') as response:
-            if response.status == 200:
-                logging.info(f"Location {norm_loc} found in the database.")
-                return awaresponse.json()  # Return coordinates (lat, lng)
-            elif response.status == 404:
-                logging.info(f"Location {norm_loc} not found in the database.")
-                return None
-            else:
-                logging.error(f"Error checking database for {norm_loc}. Status code: {response.status}")
-            return None
-
-async def save_in_db(norm_loc, lat, lng):
-    #Save the location in the db
-    data = {
-        'norm_loc': norm_loc,
-        'lat': lat,
-        'lng': lng
-    }
-    #response = requests.post(f'{DB_URL}/add_location', data=data)
-    async with aiohttp.ClientSession() as session:
-        try:
-            async with session.post(f'{DB_URL}/add_location', data=data) as response:
-                if response.status == 201:
-                    logging.info(f"Location {norm_loc} saved to database")
-                else:
-                    logging.error(f"Failed to save location {norm_loc} to database. Status code: {response.status}")
-        except Exception as e:
-            logging.error(f"Error saving location {norm_loc} to database: {e}")
 
 
 def normalize_location(location):
@@ -121,10 +88,25 @@ async def load_csv(filename):
     pipeline.execute()
     logging.info(f"Finished processing {filename}.")
 
+def is_url(string):
+    try:
+        # Prepend scheme if missing
+        if not string.startswith(('http://', 'https://')):
+            string = 'http://' + string
+
+        result = urlparse(string)
+        netloc = result.netloc.lower()
+
+        # Valid URL if netloc contains at least one dot and isn't just www.
+        return bool(netloc and '.' in netloc and netloc != 'www.')
+    except Exception:
+        return False
+
 async def fetch_geocode(session, location, semaphore):
 
     #Skipping location if it is a URL or if it is a digit
-    if re.match(r'^(https?://)?(www\.)?[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(/[^\s]*)?$', location):
+    if is_url(location):
+        logging.info(f"Skipping URL location: {location}")
         return None
     if location.isdigit():
         return None
@@ -135,12 +117,6 @@ async def fetch_geocode(session, location, semaphore):
     if cache_data:  
         #logging.info(f"Cache hit: {norm_loc}")
         return cache_data
-
-    # Location skipped if in db
-    db_data = await check_db(norm_loc)
-    if db_data:
-        #logging.info(f"Database hit: {norm_loc}")
-        return db_data
     
     #Only allowing 5 concurrent tasks
     async with semaphore:
@@ -163,8 +139,6 @@ async def fetch_geocode(session, location, semaphore):
         #Save into cache
         save_in_cache(norm_loc, lat, lng) 
 
-        #Save into db
-        await save_in_db(norm_loc, lat, lng)
         logging.info(f"{norm_loc} geocoded as ({lat}, {lng})")
         return {'norm_loc': norm_loc, 'lat': lat, 'lng': lng }
     
@@ -180,10 +154,10 @@ async def get_coordinates(location):
         )
     else:
         logging.info("Redis cache already populated with uscities.csv and worldcities.csv.")
+        
     semaphore = asyncio.Semaphore(MAX_RPS)
     async with aiohttp.ClientSession() as session:
         result = await fetch_geocode(session, location, semaphore)
         if result:
-            #return result['norm_loc'], result['lat'], result['lng']
-            return result['lat'], result['lng']
+            return result['norm_loc'], result['lat'], result['lng']
         return None

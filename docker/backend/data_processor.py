@@ -4,7 +4,6 @@ import sqlite3
 from collections import Counter
 import json
 from datetime import datetime, timedelta
-from geocode_db import get_location_coordinates
 from dotenv import load_dotenv
 import os
 import nltk
@@ -93,18 +92,19 @@ class DataProcessor:
         #Merge with existing df
         self.cache_df = pd.concat([self.cache_df, new_df], ignore_index=True)
         self.redis_cli.set("cache_data", self.cache_df.to_json(orient="records"))
+
+        #redis stores everything as strings, so we need to convert the timestamp to a string
         self.redis_cli.set("latest_timestamp", self.latest_timestamp.strftime("%a, %d %b %Y %H:%M:%S GMT"))
 
         return self.cache_df
 
-    def filter_data(self, since=None, label=None, location=False, specific_location=None):
+    def filter_data(self, since=None, latest=None, label=None, location=False, specific_location=None, sentiment=False):
         """Data filtering based on what the other functions need"""
         df = self.cache_df.copy() # changed to cache_df
-        df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
         if since:
             df = df[df["timestamp"] >= pd.to_datetime(since, utc=True)]
         if latest:
-            df = df[df["timestamp"] <= pd.to_datetime(latest, utc=True)]
+            df = df[df["timestamp"] < pd.to_datetime(latest, utc=True) + timedelta(days=1)]
         if label:
             df = df[df["label"] == label]
         if location:
@@ -120,10 +120,16 @@ class DataProcessor:
         """Validating the date range as provided by user"""
 
         #No date range provided, default to last 24 hours
-        if start_date is None or end_date is None:
-            start_date = pd.to_datetime(datetime.utcnow() - timedelta(days=1))
-            end_date = pd.to_datetime(datetime.utcnow())
-            return start_date, end_date
+        if start_date is None and end_date is None:
+            end_date = pd.to_datetime(datetime.utcnow(), utc=True)
+            start_date = end_date - timedelta(days=1)
+        
+        #If only start_date or only end_date is provided
+        if start_date and not end_date:
+            end_date = self.cache_df["timestamp"].max()
+
+        if end_date and not start_date:
+            start_date = self.cache_df["timestamp"].min()
         
         #Inputed date range accepted for pd.to_datetime format
         try:
@@ -134,7 +140,6 @@ class DataProcessor:
 
         if start_date > end_date:
             return {"error": "Start date must be before end date."}
-
         return start_date, end_date
     
     def fetch_label_count(self, start_date=None, end_date=None):
@@ -144,6 +149,8 @@ class DataProcessor:
         if isinstance(validation, dict) and "error" in validation:
             return validation
         start_date, end_date = validation
+
+        #filter by date range
         df = self.filter_data(since=start_date, latest=end_date)
         count = df["label"].value_counts().to_dict() 
         total_count = df["label"].count()
@@ -162,6 +169,7 @@ class DataProcessor:
             return validation
         start_date, end_date = validation
 
+        #filter by date range and disaster type
         df = self.filter_data(since=start_date, latest=end_date, label=disaster_type)
         all_cleaned_text = " ".join(df["cleaned"].astype(str))
         words = [word for word in all_cleaned_text.split() if word not in self.stop_words and not word.isdigit() and len(word)> 3]
@@ -173,9 +181,12 @@ class DataProcessor:
         validation = self.validate_date_range(start_date, end_date)
         if isinstance(validation, dict) and "error" in validation:
             return validation
-        
         start_date, end_date = validation
+
+        #filter by date range and disaster type
         df = self.filter_data(since=start_date, latest=end_date, label=disaster_type)
+        if df.empty:
+            return {"error": "No posts found for the given date range"}
         posts_per_day = df.resample("D", on="timestamp").size().reset_index(name="post_count")
         posts_per_day["timestamp"] = posts_per_day["timestamp"].dt.strftime("%Y-%m-%d")
         
@@ -188,7 +199,7 @@ class DataProcessor:
             return validation
         start_date, end_date = validation
 
-        #filtering by non-null locations
+        #filtering by non-null locations and date range
         df = self.filter_data(since=start_date, latest=end_date, location = True) 
         if df.empty:
             return {"Error": "No valid disasters mentioned in the last day"}
@@ -223,8 +234,9 @@ class DataProcessor:
         validation = self.validate_date_range(start_date, end_date)
         if isinstance(validation, dict) and "error" in validation:
             return validation
-        
         start_date, end_date = validation
+
+        #filter by date range and disaster type
         df = self.filter_data(since=start_date, latest=end_date, label=disaster_type)
         if df.empty:
             return {"error": "disaster type not found"}
@@ -232,9 +244,8 @@ class DataProcessor:
         df['timestamp'] = df['timestamp'].apply(lambda x: x.strftime('%Y-%m-%d %H:%M:%S') if pd.notnull(x) else '')
         return df[['text', 'handle', 'timestamp']].to_dict(orient="records")
     
-     def fetch_location_coordinates(self):
+    def fetch_location_coordinates(self):
         """Fetches coordinates from geocoded_cache.db"""
-        conn = sqlite3.connect(self.location_database)
         conn = sqlite3.connect(self.location_database)
         cursor = conn.cursor()
         cursor.execute("SELECT latitude, longitude FROM locations")
