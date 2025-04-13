@@ -144,7 +144,7 @@ async def fetch_geocode(session, location, semaphore):
     
     logging.error(f"Failed to geocode: {location} (no results returned)")
     return None
-    
+
 async def get_coordinates(location):
     logging.info(f"Redis size: {r.dbsize()}")
     if (r.dbsize() < 60754):
