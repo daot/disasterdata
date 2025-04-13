@@ -194,9 +194,9 @@ async def load_csv(filename):
 
     pipeline = redis_cli.pipeline()
 
-    for index, row in df.itertuples():
-        city = row["city"]
-        mapping = {"lat": row["lat"], "lng": row["lng"]}
+    for row in df.itertuples(index=False):
+        city = row.city
+        mapping = {"lat": row.lat, "lng": row.lng}
         pipeline.hset(city, mapping=mapping)
         logging.info(f"Added {city} to Redis with mapping: {mapping}")    
     pipeline.execute()
