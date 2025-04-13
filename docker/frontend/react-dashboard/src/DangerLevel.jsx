@@ -11,7 +11,7 @@ const DangerLevel = () => {
         const fetchDangerLevel = async () => {
             try {
                 //const response = await fetch('/fetch-top-disaster-last-day');  // Make sure this route is correct
-                const response = await fetch(API_HOST + '/fetch-top-disaster-last-day'); 
+                const response = await fetch(API_HOST + '/fetch-top-disaster-location'); 
                 if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
                 const data = await response.json();
 
