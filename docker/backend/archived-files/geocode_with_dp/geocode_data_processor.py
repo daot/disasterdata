@@ -133,13 +133,13 @@ async def fetch_geocode(session, location, semaphore):
     norm_loc = normalize_location(location)
     cache_data = check_cache(norm_loc)
     if cache_data:  
-        logging.info(f"Cache hit: {norm_loc}")
+        #logging.info(f"Cache hit: {norm_loc}")
         return cache_data
 
     # Location skipped if in db
     db_data = await check_db(norm_loc)
     if db_data:
-        logging.info(f"Database hit: {norm_loc}")
+        #logging.info(f"Database hit: {norm_loc}")
         return db_data
     
     #Only allowing 5 concurrent tasks
