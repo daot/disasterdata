@@ -4,7 +4,6 @@ requests
 asyncio
 aiohttp
 nltk
-sqlite3
 rapidfuzz
 inflect
 us
