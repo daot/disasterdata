@@ -9,6 +9,9 @@ import json
 import hashlib
 import urllib.parse
 import joblib
+import redis
+import pandas as pd
+from geocode_redis import fetch_geocode
 from datetime import datetime, timedelta, timezone
 from atproto import AsyncClient
 from textblob import TextBlob
@@ -30,6 +33,15 @@ REQUEST_LIMIT = int(os.environ.get("REQUEST_LIMIT", "3000"))
 TIME_WINDOW = int(os.environ.get("TIME_WINDOW", "300"))
 API_TIMEOUT = float(os.environ.get("API_TIMEOUT", TIME_WINDOW / REQUEST_LIMIT / 1000))
 model, label_encoder = joblib.load("data_model/models/lgbm_model_encoder_v1.pkl")
+
+### NEW CHANGE: Redis connection and Global Variables ###
+### Maximum of 5 requests per second ###
+MAX_RPS = 5  
+semaphore = asyncio.Semaphore(MAX_RPS)
+redis_cli = redis.Redis(host='localhost', port=6379, db=1, decode_responses=True)
+API_KEY = os.getenv('API_KEY')
+GEOCODE_URL = os.getenv('GEOCODE_URL') #Using HERE API
+
 logger = logging.getLogger(__name__)
 
 
@@ -84,7 +96,7 @@ def predict_post(cleaned_text):
 
 
 def save_post(
-    post_id, author, handle, timestamp, query, text, cleaned, label, location, sentiment
+    post_id, author, handle, timestamp, query, text, cleaned, label, location, sentiment, norm_loc, lat, lng
 ):
     """Saves a post into the database if it does not already exist."""
     session = requests.Session()
@@ -102,6 +114,10 @@ def save_post(
             "label": label,
             "location": location,
             "sentiment": sentiment,
+            ### New fields ###
+            "norm_loc": norm_loc,
+            "lat": lat,
+            "lng": lng,
         },
     )
     try:
@@ -121,6 +137,10 @@ def save_post(
                 label,
                 location,
                 sentiment,
+                ### New fields ###
+                norm_loc,
+                lat,
+                lng,
             )
         )
         return
@@ -165,6 +185,24 @@ def analyze_sentiment(text):
     polarity = blob.sentiment.polarity
     return polarity
 
+### NEW CHANGE: Function to load data into Redis from CSV 
+### Pipelines converted data frame to Redis in batches
+async def load_csv(filename):
+    logging.info(f"Processing {filename}...")
+
+    df = pd.read_csv(filename, usecols=["city", "lat", "lng"], sep=",")
+    df = df.drop_duplicates(subset=["city"])
+    logging.info(f"Loaded {len(df)} rows from {filename}.")
+
+    pipeline = redis_cli.pipeline()
+
+    for row in df.itertuples(index=False):
+        city = row.city
+        mapping = {"lat": row.lat, "lng": row.lng}
+        pipeline.hset(city, mapping=mapping)
+        logging.info(f"Added {city} to Redis with mapping: {mapping}")    
+    pipeline.execute()
+    logging.info(f"Finished processing {filename}.")
 
 async def process_posts(session, queue):
     """Processes and saves posts from the queue."""
@@ -196,6 +234,9 @@ async def process_posts(session, queue):
         cleaned = clean_post(text)
         label = predict_post(cleaned)
 
+        ### NEW CHANGE: Get the coordinates ###
+        norm_loc, lat, lng = await fetch_geocode(location, session, semaphore, redis_cli, GEOCODE_URL, API_KEY)
+
         logger.info(
             "[%s] [%s: %s] %s (%s): \n%.150s%s",
             timestamp,  # UTC
@@ -224,6 +265,10 @@ async def process_posts(session, queue):
             label,
             location,
             sentiment,
+            ### New fields ###
+            norm_loc,
+            lat,
+            lng,
         )
         queue.task_done()
 
@@ -297,6 +342,15 @@ async def main():
         )
         since = (datetime.now() - time_range).strftime("%Y-%m-%dT%H:%M:%SZ")  # CST
         until = ""
+
+    ### NEW CHANGE: Load CSV files into Redis if not already loaded ###
+    if redis_cli.dbsize() < 60754:
+        await asyncio.gather(
+            load_csv("uscities.csv"),
+            load_csv("worldcities.csv")
+        )
+    else:
+        logging.info("Redis cache already populated with uscities.csv and worldcities.csv.")
 
     queue = asyncio.Queue()
     async with aiohttp.ClientSession() as session:

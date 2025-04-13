@@ -15,3 +15,5 @@ inflect
 emoji
 preprocess
 lightgbm
+redis
+us
