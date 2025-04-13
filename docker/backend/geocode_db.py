@@ -21,7 +21,6 @@ API_URL = os.getenv('API_URL')  #posts url
 API_KEY = os.getenv('API_KEY')
 GEOCODE_URL = os.getenv('GEOCODE_URL')  #Using HERE API
 MAX_RPS = 5  #Maximum of 5 requests per second
-DB_URL = os.getenv('DB_URL')  #location url
 
 ABBREVIATIONS = {
     "la": "Los Angeles",
@@ -61,7 +60,7 @@ def fetch_data():
 async def check_db(norm_loc, session):
     #Check if location is in the db
     try:
-        async with session.get(f'{DB_URL}/get_location?norm_loc={norm_loc}') as response:
+        async with session.get(f'{API_URL}/get_location?norm_loc={norm_loc}') as response:
             if response.status == 200:
                 logging.info(f"Location {norm_loc} found in the database.")
                 return await response.json()  # Return coordinates (lat, lng)
@@ -80,7 +79,7 @@ async def save_in_db(norm_loc, lat, lng, session):
         'lng': lng
     }
     try:
-        async with session.post(f'{DB_URL}/add_location', data=data) as response:
+        async with session.post(f'{API_URL}/add_location', data=data) as response:
             if response.status == 201:
                 logging.info(f"Location {norm_loc} saved to database")
             else:
@@ -178,14 +177,11 @@ async def geocode_locations(df):
     except Exception as e:
         logging.error(f"Error in geocoding locations: {e}")
 
-#referenced for data_processor.py
-async def get_coordinates(location):
+async def get_location_coordinates(location):
     semaphore = asyncio.Semaphore(MAX_RPS)
     async with aiohttp.ClientSession() as session:
-        result = await fetch_geocode(session, location, semaphore)
-        if result:
-            return result['norm_loc'], result['lat'], result['lng']
-        return None
+        return await fetch_geocode(session, location, semaphore)
+
 
 #Main function
 async def main():

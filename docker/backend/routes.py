@@ -31,7 +31,7 @@ def update_cache():
 
 scheduler.start()
 
-
+#127.0.0.1:5000/route_name?start_date=...&end_date=...&(disaster_type)=... is the format for the API calls
 @app.route("/fetch-label-count", methods=["GET"])
 def label_count():
     start_date = request.args.get("start_date", default=None)

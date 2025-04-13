@@ -133,7 +133,6 @@ class DataProcessor:
 
         if start_date > end_date:
             return {"error": "Start date must be before end date."}
-        end_date = end_date + pd.Timedelta(days=1) - pd.Timedelta(seconds=1)
         return start_date, end_date
     
     def fetch_label_count(self, start_date=None, end_date=None):
