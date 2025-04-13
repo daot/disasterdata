@@ -130,40 +130,4 @@ async def fetch_geocode(session, location, semaphore, redis_cli, GEOCODE_URL, AP
     logging.error(f"Failed to geocode: {location} (no results returned)")
     return location, None, None
 
-"""
-async def get_coordinates(location, session, semaphore):
-    result = await fetch_geocode(session, location, semaphore)
-    if result:
-        return result['lat'], result['lng']
-    return None
-
-async def main():
-    logging.info(f"Redis size: {r.dbsize()}")
-
-    #Populate Redis if needed
-    if r.dbsize() < 60754:
-        await asyncio.gather(
-            load_csv("uscities.csv"),
-            load_csv("worldcities.csv")
-        )
-    else:
-        logging.info("Redis cache already populated with uscities.csv and worldcities.csv.")
-
-    #Sample data
-    sample_data = ["Los angeles", "New york city", "san Francisco", "tokyo"]
-
-    #Shared session and semaphore
-    semaphore = asyncio.Semaphore(MAX_RPS)
-    async with aiohttp.ClientSession() as session:
-        results = await asyncio.gather(
-            get_coordinates(location, session, semaphore) for location in sample_data
-        )
-
-        for location, result in zip(sample_data, results):
-            if result:
-                logger.info(f"Coordinates for {location}: {result}")
-            else:
-                logger.info(f"Failed to get coordinates for {location}")
-if __name__ == "__main__":
-    asyncio.run(main())"""
 
