@@ -5,7 +5,7 @@ FROM python:3.10-alpine
 WORKDIR /app
 
 # Copy necessary files
-COPY data_processor.py geocode.py requirements.txt location_cache.db routes.py ./
+COPY data_processor.py geocode_db.py requirements.txt location_cache.db routes.py ./
 
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
