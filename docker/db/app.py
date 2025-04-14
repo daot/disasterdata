@@ -118,7 +118,7 @@ def add_row():
             with conn.cursor() as cur:
                 cur.execute(
                     """INSERT INTO posts (id, timestamp, query, author, handle, text, cleaned, label, location, sentiment, norm_loc, lat, lng)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
                     values,
                 )
                 conn.commit()
