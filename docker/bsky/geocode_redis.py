@@ -5,21 +5,10 @@ import logging
 import os
 import asyncio
 import re
-import requests
-import aiohttp
 import us
 from urllib.parse import urlparse
-from dotenv import load_dotenv
+#from retrying import retry
 
-#Load environment variables
-load_dotenv()
-
-#env vars
-API_URL = os.getenv('API_URL')  #posts url
-API_KEY = os.getenv('API_KEY')
-GEOCODE_URL = os.getenv('GEOCODE_URL')  #Using HERE API
-MAX_RPS = 5  #Maximum of 5 requests per second
-DB_URL = os.getenv('DB_URL')  #location url
 
 ABBREVIATIONS = {
     "la": "Los Angeles",
@@ -30,11 +19,9 @@ ABBREVIATIONS = {
     "uk": "United Kingdom",
     "dc": "Washington, D.C.",
     "on": "Ontario",
-    "ca": "Canada"
+    "ca": "Canada",
+    "new york": "New York City"
 }
-
-# Redis connection
-r = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
 
 
 def normalize_location(location):
@@ -55,38 +42,18 @@ def normalize_location(location):
         return ABBREVIATIONS[location]
     return location.title()
 
-def save_in_cache(norm_loc, lat, lng):
+def save_in_cache(norm_loc, lat, lng, redis_cli):
     """Save geocoded location into Redis cache."""
-    r.hset(norm_loc, mapping={"lat": lat, "lng": lng})
+    redis_cli.hset(norm_loc, mapping={"lat": lat, "lng": lng})
     logging.info(f"Saved {norm_loc} into Redis with coordinates: ({lat}, {lng})")
 
-def check_cache(norm_loc):
+def check_cache(norm_loc, redis_cli):
     #Check if location is in Redis cache
-    if r.exists(norm_loc):
-        coordinates = r.hgetall(norm_loc)
+    if redis_cli.exists(norm_loc):
+        coordinates = redis_cli.hgetall(norm_loc)
         logging.info(f"Cache hit for {norm_loc}: {coordinates} found in Redis")
-        return coordinates 
+        return norm_loc, coordinates.get("lat"), coordinates.get("lng")
     return None 
-
-#Function to load data into Redis from CSV
-async def load_csv(filename):
-    logging.info(f"Processing {filename}...")
-
-    #Convert csv file into dataframe
-    df = pd.read_csv(filename, usecols=["city", "lat", "lng"], sep=",")
-    df = df.drop_duplicates(subset=["city"])
-    logging.info(f"Loaded {len(df)} rows from {filename}.")
-
-    #Using pipeline for batch processing
-    pipeline = r.pipeline()
-
-    for index, row in df.iterrows():
-        city = row["city"]
-        mapping = {"lat": row["lat"], "lng": row["lng"]}
-        pipeline.hset(city, mapping=mapping)
-        logging.info(f"Added {city} to Redis with mapping: {mapping}")    
-    pipeline.execute()
-    logging.info(f"Finished processing {filename}.")
 
 def is_url(string):
     try:
@@ -102,18 +69,23 @@ def is_url(string):
     except Exception:
         return False
 
-async def fetch_geocode(session, location, semaphore):
-
+#@retry(stop_max_attempt_number=5, wait_fixed=2000)
+async def fetch_geocode(session, location, semaphore, redis_cli, GEOCODE_URL, API_KEY):
+    """Checks cache first and geocodes and saves back into cache if location is not is not there"""
+    if location is None:
+        return None, None, None
+    
     #Skipping location if it is a URL or if it is a digit
     if is_url(location):
         logging.info(f"Skipping URL location: {location}")
-        return None
+        return location, None, None
     if location.isdigit():
-        return None
+        logging.info(f"Skipping numeric location: {location}")
+        return location, None, None
 
     #Location skipped if in cache
     norm_loc = normalize_location(location)
-    cache_data = check_cache(norm_loc)
+    cache_data = check_cache(norm_loc, redis_cli)
     if cache_data:  
         #logging.info(f"Cache hit: {norm_loc}")
         return cache_data
@@ -121,15 +93,15 @@ async def fetch_geocode(session, location, semaphore):
     #Only allowing 5 concurrent tasks
     async with semaphore:
         try:
-            async with session.get(GEOCODE_URL.format(location, API_KEY)) as response: 
+            async with session.get(GEOCODE_URL.format(norm_loc, API_KEY)) as response: 
                 if response.status == 200:
                     data = await response.json()
                 else:
                     logging.error(f"Failed to geocode location for {location} with Status Code: {response.status}")
-                    return None
+                    return location, None, None
         except Exception as e:
             logging.warning(f"Error in retrieving coordinates for {location} with {e}")
-            return None
+            return location, None, None
 
     #Matching the HERE API response format
     if data.get("items"):  
@@ -137,27 +109,11 @@ async def fetch_geocode(session, location, semaphore):
         lng = data["items"][0]["position"]["lng"]
 
         #Save into cache
-        save_in_cache(norm_loc, lat, lng) 
+        save_in_cache(norm_loc, lat, lng, redis_cli) 
 
         logging.info(f"{norm_loc} geocoded as ({lat}, {lng})")
-        return {'norm_loc': norm_loc, 'lat': lat, 'lng': lng }
+        #return {'norm_loc': norm_loc, 'lat': lat, 'lng': lng }
+        return norm_loc, lat, lng
     
     logging.error(f"Failed to geocode: {location} (no results returned)")
-    return None
-
-async def get_coordinates(location):
-    logging.info(f"Redis size: {r.dbsize()}")
-    if (r.dbsize() < 60754):
-        await asyncio.gather(
-        load_csv("uscities.csv"),
-        load_csv("worldcities.csv")
-        )
-    else:
-        logging.info("Redis cache already populated with uscities.csv and worldcities.csv.")
-        
-    semaphore = asyncio.Semaphore(MAX_RPS)
-    async with aiohttp.ClientSession() as session:
-        result = await fetch_geocode(session, location, semaphore)
-        if result:
-            return result['norm_loc'], result['lat'], result['lng']
-        return None
+    return location, None, None
