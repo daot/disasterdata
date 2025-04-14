@@ -7,7 +7,7 @@ import asyncio
 import re
 import us
 from urllib.parse import urlparse
-from retrying import retry
+#from retrying import retry
 
 
 ABBREVIATIONS = {
@@ -69,7 +69,7 @@ def is_url(string):
     except Exception:
         return False
 
-@retry(stop_max_attempt_number=5, wait_fixed=2000)
+#@retry(stop_max_attempt_number=5, wait_fixed=2000)
 async def fetch_geocode(session, location, semaphore, redis_cli, GEOCODE_URL, API_KEY):
     """Checks cache first and geocodes and saves back into cache if location is not is not there"""
     if location is None:
