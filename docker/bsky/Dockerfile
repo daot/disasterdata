@@ -5,7 +5,7 @@ FROM python:3.10-slim
 WORKDIR /app
 
 # Copy necessary files
-COPY monitor.py nlp_loader.py preprocess.py requirements.txt ./
+COPY monitor.py nlp_loader.py preprocess.py geocode_redis.py uscities.csv worldcities.csv requirements.txt ./
 COPY data_model/models/lgbm_model_encoder_v1.pkl ./data_model/models/lgbm_model_encoder_v1.pkl
 
 # Install dependencies

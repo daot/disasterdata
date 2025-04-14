@@ -137,10 +137,12 @@ def edit_row():
     row_id = request_data.pop("id")
 
     allowed_fields = {"cleaned", "label", "location", "sentiment", "norm_loc", "lat", "lng"}
+    special_fields = {"lat", "lng"}
     if not request_data.keys() <= allowed_fields:
         logger.error("Only 'cleaned', 'label', 'location', 'sentiment', 'norm_loc', 'lat', and 'lng' can be updated")
         return {"error": "Only 'cleaned', 'label', 'location', 'sentiment', 'norm_loc', 'lat', and 'lng' can be updated"}, 400
 
+    
     set_clause = ", ".join([f"{key} = %s" for key in request_data.keys()])
     values = tuple(request_data.values()) + (row_id,)
 

@@ -38,7 +38,7 @@ model, label_encoder = joblib.load("data_model/models/lgbm_model_encoder_v1.pkl"
 ### Maximum of 5 requests per second ###
 MAX_RPS = 5  
 semaphore = asyncio.Semaphore(MAX_RPS)
-redis_host = os.getenv('REDIS_HOST', 'localhost')
+redis_host = os.getenv('REDIS_HOST')
 redis_port = int(os.getenv('REDIS_PORT', 6379))
 redis_cli = redis.Redis(host=redis_host, port=redis_port, db=1, decode_responses=True)
 API_KEY = os.getenv('API_KEY')
@@ -237,7 +237,7 @@ async def process_posts(session, queue):
         label = predict_post(cleaned)
 
         ### NEW CHANGE: Get the coordinates ###
-        norm_loc, lat, lng = await fetch_geocode(location, session, semaphore, redis_cli, GEOCODE_URL, API_KEY)
+        norm_loc, lat, lng = await fetch_geocode(session, location, semaphore, redis_cli, GEOCODE_URL, API_KEY)
 
         logger.info(
             "[%s] [%s: %s] %s (%s): \n%.150s%s",

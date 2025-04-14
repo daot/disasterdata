@@ -1,4 +1,4 @@
-.DS_Store
+**/.DS_Store
 *.db
 *.log
 *.json
@@ -22,3 +22,4 @@ __pycache__
 node_modules
 react-dashboard/node_modules/
 local-compose.yml
+config/
