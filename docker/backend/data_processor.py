@@ -10,6 +10,7 @@ import nltk
 from nltk.corpus import stopwords
 import inflect
 import redis
+import random
 
 load_dotenv()
 nltk.download("stopwords")
@@ -100,7 +101,7 @@ class DataProcessor:
 
         return self.cache_df
 
-    def filter_data(self, since=None, latest=None, label=None, location=False, specific_location=None, sentiment=False):
+    def filter_data(self, since=None, latest=None, label=None, norm_loc=False, location=False, specific_location=None, sentiment=False):
         """Data filtering based on what the other functions need"""
         df = self.cache_df.copy() # changed to cache_df
         df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
@@ -110,6 +111,8 @@ class DataProcessor:
             df = df[df["timestamp"] < pd.to_datetime(latest, utc=True) + timedelta(days=1)]
         if label:
             df = df[df["label"] == label]
+        if norm_loc:
+            df = df[df["norm_loc"].notna()]
         if location:
             df = df[df["location"].notna()]
         if specific_location:
@@ -203,12 +206,12 @@ class DataProcessor:
         start_date, end_date = validation
 
         #filtering by non-null locations and date range
-        df = self.filter_data(since=start_date, latest=end_date, location = True) 
+        df = self.filter_data(since=start_date, latest=end_date, norm_loc=True) 
         if df.empty:
             return {"Error": "No valid disasters mentioned in the last day"}
         
         #Finding the most popular disaster-location pair
-        top_pair = Counter(zip(df['label'], df['location'])).most_common(1)
+        top_pair = Counter(zip(df['label'], df['norm_loc'])).most_common(1)
         if not top_pair:
             return {"Error": "No valid disaster-location pairs"}
         top_label, top_location = top_pair[0][0]
@@ -247,13 +250,18 @@ class DataProcessor:
         df['timestamp'] = df['timestamp'].apply(lambda x: x.strftime('%Y-%m-%d %H:%M:%S') if pd.notnull(x) else '')
         return df[['text', 'handle', 'timestamp']].to_dict(orient="records")
     
-    def fetch_location_coordinates(self):
-        """Fetches coordinates from geocoded_cache.db"""
-        conn = sqlite3.connect(self.location_database)
-        cursor = conn.cursor()
-        cursor.execute("SELECT latitude, longitude FROM locations")
-        rows = cursor.fetchall()
-        conn.close()
+    def fetch_location_coordinates(self, disaster_type, start_date=None, end_date=None):
+        """Fetches coordinates based on label and optional date range"""
+        validation = self.validate_date_range(start_date, end_date)
+        if isinstance(validation, dict) and "error" in validation:
+            return validation
+        start_date, end_date = validation
 
-        return [{"latitude": row[0], "longitude": row[1]} for row in rows]
+        #filter by date range and disaster type
+        df = self.filter_data(since=start_date, latest=end_date, label=disaster_type, norm_loc=True)
+        if df.empty:
+            return {"error": f"only invalid locations for {disaster_type} found"}
+        return df[['norm_loc', 'lat', 'lng', 'sentiment']].to_dict(orient="records")
+        
+        
 

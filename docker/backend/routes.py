@@ -31,7 +31,7 @@ def update_cache():
 
 scheduler.start()
 
-#127.0.0.1:5000/route_name?start_date=...&end_date=...&(disaster_type)=... is the format for the API calls
+#127.0.0.1:5000/route_name?(start_date)=YYYY-MM-DD&(end_date)=YYYY-MM-DD&(disaster_type)=... is the format for the API calls
 @app.route("/fetch-label-count", methods=["GET"])
 def label_count():
     start_date = request.args.get("start_date", default=None)
@@ -74,14 +74,14 @@ def view_feed_data():
         mimetype='application/json'
     )
     
-@app.route("/fetch-location-coordinates", methods=["GET"])
+@app.route("/fetch-coordinates-by-label", methods=["GET"])
 def fetch_coordinates():
-    """API endpoint to return coordinates from location_cache.db"""
-    try:
-        coordinates = process.fetch_location_coordinates()
-        return jsonify(coordinates)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    start_date = request.args.get("start_date", default=None)
+    end_date = request.args.get("end_date", default=None)
+    disaster_type = request.args.get("disaster_type")
+    if disaster_type is None:
+        return jsonify({"error": "disaster_type parameter is required"}), 400
+    return jsonify(process.fetch_location_coordinates(disaster_type, start_date, end_date))
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
