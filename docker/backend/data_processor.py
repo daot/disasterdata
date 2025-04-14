@@ -10,7 +10,6 @@ import nltk
 from nltk.corpus import stopwords
 import inflect
 import redis
-import random
 
 load_dotenv()
 nltk.download("stopwords")
@@ -246,7 +245,7 @@ class DataProcessor:
         df = self.filter_data(since=start_date, latest=end_date, label=disaster_type)
         if df.empty:
             return {"error": "disaster type not found"}
-        
+
         df['timestamp'] = df['timestamp'].apply(lambda x: x.strftime('%Y-%m-%d %H:%M:%S') if pd.notnull(x) else '')
         return df[['text', 'handle', 'timestamp']].to_dict(orient="records")
     
