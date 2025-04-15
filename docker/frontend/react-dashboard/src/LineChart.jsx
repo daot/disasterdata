@@ -6,7 +6,7 @@ const API_HOST = process.env.REACT_APP_API_HOST;
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
-const LineChart = () => {
+const LineChart = React.memo(({ urlQuery }) => {
   const [chartData, setChartData] = useState({
     labels: [],
     datasets: [],
@@ -30,7 +30,7 @@ const LineChart = () => {
     const tempData = {};
   
     for (const label of disasterTypes) {
-      const response = await fetch(API_HOST + `/fetch-posts-over-time?disaster_type=${label}`);
+      const response = await fetch(API_HOST + `/fetch-posts-over-time?disaster_type=${label}${urlQuery ? ("&" + urlQuery) : ""}`);
       const data = await response.json();
       tempData[label] = data;
       data.forEach(item => allTimestamps.add(item.timestamp));
@@ -56,7 +56,7 @@ const LineChart = () => {
       labels: sortedLabels,
       datasets: datasets,
     });
-  }, []);
+  }, [urlQuery]);
   
 
   useEffect(() => {
@@ -100,6 +100,6 @@ const LineChart = () => {
       <Line data={chartData} options={options} />
     </div>
   );
-};
+});
 
 export default LineChart;

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 
 const API_HOST = process.env.REACT_APP_API_HOST;
 
-const Feed = ({ selectedDisaster }) => {
+const Feed = React.memo(({ urlQuery, selectedDisaster }) => {
     const [tweets, setTweets] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -22,7 +22,7 @@ const Feed = ({ selectedDisaster }) => {
 
             try {
                 console.log(`Fetching tweets for disaster type: ${selectedDisaster}`);
-                const response = await fetch(API_HOST + `/fetch-text-from-label?disaster_type=${selectedDisaster}`);
+                const response = await fetch(API_HOST + `/fetch-text-from-label?disaster_type=${selectedDisaster}${urlQuery ? ("&" + urlQuery) : ""}`);
 
                 if (!response.ok) {
                     throw new Error(`HTTP error! Status: ${response.status}`);
@@ -51,7 +51,7 @@ const Feed = ({ selectedDisaster }) => {
         const intervalId = setInterval(fetchTweets, 60000);
 
         return () => clearInterval(intervalId);
-    }, [selectedDisaster]);
+    }, [urlQuery, selectedDisaster]);
 
     if (loading) return <p>Loading tweets...</p>;
     if (error) return <p>{error}</p>;
@@ -87,6 +87,6 @@ const Feed = ({ selectedDisaster }) => {
       </div>
   );
   
-};
+});
 
 export default Feed;

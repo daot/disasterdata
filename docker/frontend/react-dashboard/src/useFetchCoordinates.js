@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 const API_HOST = process.env.REACT_APP_API_HOST;
 const disasterTypes = ["hurricane", "flood", "wildfire", "tornado", "earthquake"];
 
-const useFetchCoordinates = (selectedDisasterType = "earthquake", startDate = null, endDate = null) => {
+const useFetchCoordinates = (selectedDisasterType = "earthquake", urlQuery = "") => {
   const [coordinates, setCoordinates] = useState([]);
 
   useEffect(() => {
@@ -11,7 +11,7 @@ const useFetchCoordinates = (selectedDisasterType = "earthquake", startDate = nu
       const allData = [];
 
       try {
-        let url = `${API_HOST}/fetch-coordinates-by-label?disaster_type=${selectedDisasterType}`;
+        let url = `${API_HOST}/fetch-coordinates-by-label?disaster_type=${selectedDisasterType}${urlQuery ? ("&" + urlQuery) : ""}`;
 
         const response = await fetch(url);
         if (!response.ok) {
@@ -71,7 +71,7 @@ const useFetchCoordinates = (selectedDisasterType = "earthquake", startDate = nu
     const interval = setInterval(fetchCoordinatesForType, 60000); // Refresh every 60 seconds
 
     return () => clearInterval(interval);
-  }, [selectedDisasterType, startDate, endDate]); // Re-fetch when selectedDisasterType changes
+  }, [selectedDisasterType, urlQuery]); // Re-fetch when selectedDisasterType changes
 
   return coordinates;
 };

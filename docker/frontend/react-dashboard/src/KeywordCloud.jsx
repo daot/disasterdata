@@ -6,7 +6,7 @@ const API_HOST = process.env.REACT_APP_API_HOST;
 
 const disasterTypes = ["hurricane", "flood", "wildfire", "tornado", "earthquake"];
 
-const KeywordCloud = React.memo(({ selectedDisasterType }) => {
+const KeywordCloud = React.memo(({ urlQuery, selectedDisasterType }) => {
   const [wordData, setWordData] = useState({});
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -17,7 +17,7 @@ const KeywordCloud = React.memo(({ selectedDisasterType }) => {
       const results = await Promise.all(
         disasterTypes.map(async (type) => {
           console.log(`Fetching data for disaster type: ${type}`);
-          const response = await fetch(API_HOST + `/fetch-most-frequent-word?disaster_type=${type}`);
+          const response = await fetch(API_HOST + `/fetch-most-frequent-word?disaster_type=${type}${urlQuery ? ("&" + urlQuery) : ""}`);
           if (!response.ok) throw new Error(`Failed to fetch data for ${type}`);
 
           const data = await response.json();
@@ -44,7 +44,7 @@ const KeywordCloud = React.memo(({ selectedDisasterType }) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [urlQuery, selectedDisasterType]);
 
   useEffect(() => {
     fetchDataForDisasterType(); // Initial fetch

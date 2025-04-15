@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Pie } from "react-chartjs-2";
 import { Card } from "react-bootstrap";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
@@ -7,7 +7,7 @@ const API_HOST = process.env.REACT_APP_API_HOST;
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
-const Graph = () => {
+const Graph = React.memo(({ urlQuery }) => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -16,7 +16,7 @@ const Graph = () => {
     setLoading(true);
     setError(null);
 
-    fetch(API_HOST + `/fetch-label-count`)
+    fetch(API_HOST + `/fetch-label-count${urlQuery ? ("?" + urlQuery) : ""}`)
       .then((response) => {
         if (!response.ok) {
           throw new Error("Failed to fetch data");
@@ -69,7 +69,7 @@ const Graph = () => {
     const intervalId = setInterval(fetchPieData, 60000); // auto-refresh every 60 sec
 
     return () => clearInterval(intervalId); // cleanup on unmount
-  }, []);
+  }, [urlQuery]);
 
   const options = {
     plugins: {
@@ -103,6 +103,6 @@ const Graph = () => {
       </Card.Body>
     </Card>
   );
-};
+});
 
 export default Graph;

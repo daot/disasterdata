@@ -14,14 +14,77 @@ const Dashboard = () => {
   const [selectedDisasterKeywordCloud, setSelectedDisasterKeywordCloud] = useState("hurricane");
   const [selectedDisasterFeed, setSelectedDisasterFeed] = useState("hurricane");
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleString());
+  const [urlQuery, setUrlQuery] = useState('');
+  const [rangeName, setRangeName] = useState('in the Past Day');
+  const startFilter = "april 10, 2025"
+  const endFilter = "april 12, 2025"
 
   useEffect(() => {
+    const now = new Date();
+        let start = null;
+        let end = new Date();
+    
+        switch (filterRange) {
+          case 'hour':
+            start = new Date(now);
+            start.setHours(start.getHours() - 1);
+            setRangeName('in the Past Hour');
+            break;
+          case 'day':
+            start = new Date(now);
+            start.setDate(start.getDate() - 1);
+            setRangeName('in the Past Day');
+            break;
+          case 'week':
+            start = new Date(now);
+            start.setDate(start.getDate() - 7);
+            setRangeName('in the Past Week');
+            break;
+          case 'month':
+            start = new Date(now);
+            start.setMonth(start.getMonth() - 1);
+            setRangeName('in the Past Month');
+            break;
+          case 'year':
+            start = new Date(now);
+            start.setFullYear(start.getFullYear() - 1);
+            setRangeName('in the Past Year');
+            break;
+          case 'custom':
+            const customStart = new Date(startFilter);
+            const customEnd = new Date(endFilter);
+            if (
+              !isNaN(customStart.getTime()) &&
+              !isNaN(customEnd.getTime()) &&
+              customStart <= customEnd
+            ) {
+              start = customStart;
+              end = customEnd;
+            } else {
+              console.warn('Invalid custom date range');
+              start = null;
+              end = null;
+            }
+            setRangeName('from ' + start.toLocaleDateString() + ' to ' + end.toLocaleDateString());
+            break;
+          default:
+            start = null;
+            end = null;
+        }
+
+        if (start && end) {
+            const query = `start_date=${encodeURIComponent(start.toISOString())}&end_date=${encodeURIComponent(end.toISOString())}`;
+            setUrlQuery(query);
+        } else {
+            setUrlQuery('');
+        }
+
     const interval = setInterval(() => {
       setCurrentTime(new Date().toLocaleString());
     }, 1000); // Update every second
 
     return () => clearInterval(interval); 
-  }, []);
+  }, [filterRange, startFilter, endFilter]);
 
   return (
     <div className="m-0">
@@ -93,10 +156,10 @@ const Dashboard = () => {
           </Card>
         </Col>
         <Col md={6} className="flex-grow-1">
-          <TMDT filterRange={filterRange}/>
+          <TMDT rangeName={rangeName} urlQuery={urlQuery}/>
         </Col>
         <Col md={3} className="flex-shrink-1">
-          <DangerLevel filterRange={filterRange}/>
+          <DangerLevel urlQuery={urlQuery}/>
         </Col>
       </Row>
 
@@ -143,7 +206,7 @@ const Dashboard = () => {
                   Earthquake
                 </Button>
               </ButtonGroup>
-              <HeatMap filterRange={filterRange} selectedDisasterType={selectedDisasterHeatmap} />
+              <HeatMap urlQuery={urlQuery} selectedDisasterType={selectedDisasterHeatmap} />
             </Card.Body>
           </Card>
         </Col>
@@ -191,7 +254,7 @@ const Dashboard = () => {
                 </Button>
               </ButtonGroup>
 
-              <Feed filterRange={filterRange} selectedDisaster={selectedDisasterFeed} />
+              <Feed urlQuery={urlQuery} selectedDisaster={selectedDisasterFeed} />
             </Card.Body>
           </Card>
         </Col>
@@ -201,7 +264,7 @@ const Dashboard = () => {
       
       <Row className="mt-3 d-flex">
           <Col className="flex-grow-1" md={3}>
-            <Chart filterRange={filterRange}/>
+            <Chart urlQuery={urlQuery}/>
           </Col>
           <Col className="flex-grow-1" md={4}>
             <Card className="shadow-sm" style={{ height: "280px" }}>
@@ -244,7 +307,7 @@ const Dashboard = () => {
                     Earthquake
                   </Button>
                 </ButtonGroup>
-                <KeywordCloud filterRange={filterRange} selectedDisasterType={selectedDisasterKeywordCloud} />
+                <KeywordCloud urlQuery={urlQuery} selectedDisasterType={selectedDisasterKeywordCloud} />
               </Card.Body>
             </Card>
           </Col>
@@ -252,7 +315,7 @@ const Dashboard = () => {
           <Card className="shadow-sm" style={{ height: "280px" }}>
             <Card.Body>
               <Card.Title> Live Disaster Trends</Card.Title>
-              <LineChart filterRange={filterRange}/>
+              <LineChart urlQuery={urlQuery}/>
             </Card.Body>
           </Card>
           </Col>
@@ -262,7 +325,7 @@ const Dashboard = () => {
         <Card className="shadow-sm" style={{ height: "280px" }}>
           <Card.Body>
             <Card.Title> Live Disaster Trends</Card.Title>
-            <LineChart filterRange={filterRange}/>
+            <LineChart urlQuery={urlQuery}/>
           </Card.Body>
         </Card>
         </Col>

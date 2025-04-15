@@ -4,11 +4,11 @@ import L from "leaflet";
 import "leaflet.heat";
 import useFetchCoordinates from "./useFetchCoordinates";
 
-const HeatMap = ({ selectedDisasterType }) => {
+const HeatMap = React.memo(({ urlQuery, selectedDisasterType }) => {
   const [map, setMap] = useState(null);
   const [heatLayer, setHeatLayer] = useState(null);
-  const coordinates = useFetchCoordinates(selectedDisasterType); // Fetch coordinates based on selected disaster type
-
+  const coordinates = useFetchCoordinates(selectedDisasterType, urlQuery);
+  
   // Normalize sentiment from [-1, 1] → [0, 1]
   const normalizeSentiment = (value) => (value + 1) / 2;
 
@@ -65,11 +65,11 @@ const HeatMap = ({ selectedDisasterType }) => {
 
       setHeatLayer(newHeatLayer); // Update the state to keep track of the heatLayer
     }
-  }, [map, coordinates, selectedDisasterType]);  // Trigger this effect when selectedDisasterType or coordinates change
+  }, [map, coordinates, urlQuery, selectedDisasterType]);  // Trigger this effect when selectedDisasterType or coordinates change
 
   return (
     <div id="heatmap" className="mt-3" style={{ height: "250px", background: "lightgray" }}></div>
   );
-};
+});
 
 export default HeatMap;

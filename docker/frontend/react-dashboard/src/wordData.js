@@ -1,8 +1,8 @@
 const API_HOST = process.env.REACT_APP_API_HOST;
 
-export const fetchWordData = async () => {
+export const fetchWordData = async (urlQuery) => {
     try {
-        const response = await fetch(API_HOST + "/fetch-most-frequent-word");
+        const response = await fetch(API_HOST + `/fetch-most-frequent-word${urlQuery ? ("?" + urlQuery) : ""}`)
         const data = await response.json();
 
         if (data && Array.isArray(data["count of each word"])) {
