@@ -10,6 +10,7 @@ import hashlib
 import urllib.parse
 import joblib
 import redis
+import pandas as pd
 from geocode_redis import fetch_geocode
 from datetime import datetime, timedelta, timezone
 from atproto import AsyncClient
