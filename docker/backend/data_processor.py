@@ -10,10 +10,17 @@ import nltk
 from nltk.corpus import stopwords
 import inflect
 import redis
+from typing import Optional, Dict
 
 load_dotenv()
 nltk.download("stopwords")
 
+class AtUri:
+    def __init__(self, repo: str, collection: str, rkey: str):
+        self.repo = repo
+        self.collection = collection
+        self.rkey = rkey
+        
 class DataProcessor:
     def __init__(self):
         """Fetches data once to be used across all API calls"""
@@ -45,6 +52,41 @@ class DataProcessor:
         self.stop_words.update((additional_stop_words))
         self.stop_words.update({p.number_to_words(i) for i in range(0,1001)})
         self.fetch_data()
+
+        self.uri_templates: Dict[str, Dict[str, str]] = {
+            "app.bsky.actor.profile": {
+                "label": "Bluesky",
+                "link": lambda uri: f"https://bsky.app/profile/{uri.repo}",
+            },
+            "app.bsky.feed.post": {
+                "label": "Bluesky",
+                "link": lambda uri: f"https://bsky.app/profile/{uri.repo}/post/{uri.rkey}",
+            },
+            "app.bsky.graph.list": {
+                "label": "Bluesky",
+                "link": lambda uri: f"https://bsky.app/profile/{uri.repo}/lists/{uri.rkey}",
+            },
+            "app.bsky.feed.generator": {
+                "label": "Bluesky",
+                "link": lambda uri: f"https://bsky.app/profile/{uri.repo}/feed/{uri.rkey}",
+            },
+            "fyi.unravel.frontpage.post": {
+                "label": "Frontpage",
+                "link": lambda uri: f"https://frontpage.fyi/post/{uri.repo}/{uri.rkey}",
+            },
+            "com.whtwnd.blog.entry": {
+                "label": "WhiteWind",
+                "link": lambda uri: f"https://whtwnd.com/{uri.repo}/{uri.rkey}",
+            },
+            "com.shinolabs.pinksea.oekaki": {
+                "label": "PinkSea",
+                "link": lambda uri: f"https://pinksea.art/{uri.repo}/oekaki/{uri.rkey}",
+            },
+            "blue.linkat.board": {
+                "label": "Linkat",
+                "link": lambda uri: f"https://linkat.blue/{uri.repo}",
+            },
+        }
 
     def load_latest_timestamp(self):
         latest_timestamp = self.redis_cli.get("latest_timestamp")
@@ -263,6 +305,26 @@ class DataProcessor:
             "danger_value": float(avg_sentiment)
             }
 
+    def check_uri(self, uri_str):
+        if uri_str is None:
+            return None
+        
+        parts = str(uri_str).split("/")
+        if len(parts) != 5 or parts[0] != "at:" or parts[1] != "":
+            return None
+
+        uri = AtUri(repo=parts[2], collection=parts[3], rkey=parts[4])
+        template = self.uri_templates.get(uri.collection)
+
+        if not template:
+            return None
+
+        return {
+            "label": template["label"],
+            "link": template["link"](uri),
+        }
+
+
     def fetch_text(self, disaster_type, start_date=None, end_date=None):
 
         validation = self.validate_date_range(start_date, end_date)
@@ -276,7 +338,8 @@ class DataProcessor:
             return {"error": "No posts found for the given date range"}
 
         df['timestamp'] = df['timestamp'].apply(lambda x: x.strftime('%Y-%m-%d %H:%M:%S') if pd.notnull(x) else '')
-        return df[['text', 'handle', 'timestamp']].to_dict(orient="records")
+        df['url'] = df['id'].apply(lambda x: self.check_uri(x)['link'] if pd.notnull(x) else '')
+        return df[['text', 'handle', 'timestamp', 'url']].to_dict(orient="records")
     
     def fetch_location_coordinates(self, disaster_type, start_date=None, end_date=None):
 

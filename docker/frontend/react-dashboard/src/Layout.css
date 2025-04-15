@@ -152,6 +152,31 @@
   max-width: 70%;
 }
 
+#current-time, #current-disaster, #danger-level {
+  font-size: 1.25rem;
+}
+
+#custom-range-from, #custom-range-to {
+  height: 24px;
+  font-size: 12px;
+  background-color: var(--background-color);
+  border-color: var(--background-color);
+  color: var(--foreground-color);
+}
+
+.form-control::placeholder {
+  color: var(--foreground-color) !important;
+}
+
+.tweet-profile-link {
+  color: var(--frost-lightblue);
+  text-decoration: none;
+}
+
+.tweet-profile-link:hover {
+  opacity: 0.8;
+}
+
 @media
 only screen and (-webkit-min-device-pixel-ratio: 1.25),
 only screen and ( min--moz-device-pixel-ratio: 1.25),
@@ -188,4 +213,16 @@ only screen and ( min-resolution: 1.25dppx)
     #main-container {
       max-width: 90%;
     }
+}
+
+@media (max-width: 1305px){
+  .h5 {
+    font-size: 1.0rem !important;
+  }
+}
+
+@media (max-width: 1550px){
+  #current-time, #current-disaster, #danger-level {
+    font-size: 1.0rem;
+  }
 }

@@ -9,6 +9,7 @@ import DangerLevel from "./DangerLevel";
 import TMDT from "./TMDT";
 
 const Dashboard = () => {
+  const [filterRange, setFilterRange] = useState("day");
   const [selectedDisasterHeatmap, setSelectedDisasterHeatmap] = useState("hurricane");
   const [selectedDisasterKeywordCloud, setSelectedDisasterKeywordCloud] = useState("hurricane");
   const [selectedDisasterFeed, setSelectedDisasterFeed] = useState("hurricane");
@@ -24,26 +25,82 @@ const Dashboard = () => {
 
   return (
     <div className="m-0">
+      {/* Filter Row */}
+    <Container fluid>
+    <Row className="m-0 d-flex">
+      <Card className="shadow-sm">
+        <Card.Body className="d-flex justify-content-center">
+          <Card.Title className="m-0" style={{paddingRight: "12px"}}>Filter By:</Card.Title>
+          <ButtonGroup className="button-group">
+            <Button 
+              variant={filterRange === "hour" ? "primary" : "outline-primary"} 
+              onClick={() => setFilterRange("hour")}
+              
+            >
+              Hour
+            </Button>
+            <Button 
+              variant={filterRange === "day" ? "primary" : "outline-primary"} 
+              onClick={() => setFilterRange("day")}
+              
+            >
+              Day
+            </Button>
+            <Button 
+              variant={filterRange === "week" ? "primary" : "outline-primary"} 
+              onClick={() => setFilterRange("week")}
+              
+            >
+              Week
+            </Button>
+            <Button 
+              variant={filterRange === "month" ? "primary" : "outline-primary"} 
+              onClick={() => setFilterRange("month")}
+              
+            >
+              Month
+            </Button>
+            <Button 
+              variant={filterRange === "year" ? "primary" : "outline-primary"} 
+              onClick={() => setFilterRange("year")}
+              
+            >
+              Year
+            </Button>
+            <Button 
+              variant={filterRange === "custom" ? "primary" : "outline-primary"} 
+              onClick={() => setFilterRange("custom")}
+              
+            >
+              Custom:
+            </Button>
+          </ButtonGroup>
+          <div className="input-group m-0 justify-content-center align-items-start" style={{ width: "200px", paddingLeft: "12px"}}>
+            <input id="custom-range-from" className="form-control" type="text" placeholder="From:"/>
+            <input id="custom-range-to" className="form-control" type="text" placeholder="To:"/>
+          </div>
+        </Card.Body>
+      </Card>
+    </Row>
       {/* First Row - Stats */}
-      <Row className="m-0 d-flex">
-      <Col md={3} className="flex-shrink-1">
+      <Row className="mt-3 d-flex">
+        <Col md={3} className="flex-shrink-1">
           <Card className="shadow-sm" style={{ height: "100px"}}>
-            <Card.Body className="d-flex flex-column justify-items-center">
-              <Card.Title>Dashboard</Card.Title>
-              <div style={{ fontSize: "1.25rem"}}> {`${currentTime}`} </div>
+            <Card.Body className="d-flex flex-column justify-content-center align-items-start">
+              <Card.Title id="current-time-title">Dashboard</Card.Title>
+              <div id="current-time"> {`${currentTime}`} </div>
             </Card.Body>
           </Card>
         </Col>
         <Col md={6} className="flex-grow-1">
-          <TMDT />
+          <TMDT filterRange={filterRange}/>
         </Col>
         <Col md={3} className="flex-shrink-1">
-          <DangerLevel />
+          <DangerLevel filterRange={filterRange}/>
         </Col>
       </Row>
 
       {/* Second Row - HeatMap with Dropdown */}
-      <Container fluid>
       <Row className="mt-3">
         <Col md={6}>
           <Card className="shadow-sm" style={{ height: "350px"}}>
@@ -86,7 +143,7 @@ const Dashboard = () => {
                   Earthquake
                 </Button>
               </ButtonGroup>
-              <HeatMap selectedDisasterType={selectedDisasterHeatmap} />
+              <HeatMap filterRange={filterRange} selectedDisasterType={selectedDisasterHeatmap} />
             </Card.Body>
           </Card>
         </Col>
@@ -134,7 +191,7 @@ const Dashboard = () => {
                 </Button>
               </ButtonGroup>
 
-              <Feed selectedDisaster={selectedDisasterFeed} />
+              <Feed filterRange={filterRange} selectedDisaster={selectedDisasterFeed} />
             </Card.Body>
           </Card>
         </Col>
@@ -144,7 +201,7 @@ const Dashboard = () => {
       
       <Row className="mt-3 d-flex">
           <Col className="flex-grow-1" md={3}>
-            <Chart />
+            <Chart filterRange={filterRange}/>
           </Col>
           <Col className="flex-grow-1" md={4}>
             <Card className="shadow-sm" style={{ height: "280px" }}>
@@ -187,7 +244,7 @@ const Dashboard = () => {
                     Earthquake
                   </Button>
                 </ButtonGroup>
-                <KeywordCloud selectedDisasterType={selectedDisasterKeywordCloud} />
+                <KeywordCloud filterRange={filterRange} selectedDisasterType={selectedDisasterKeywordCloud} />
               </Card.Body>
             </Card>
           </Col>
@@ -195,7 +252,7 @@ const Dashboard = () => {
           <Card className="shadow-sm" style={{ height: "280px" }}>
             <Card.Body>
               <Card.Title> Live Disaster Trends</Card.Title>
-              <LineChart/>
+              <LineChart filterRange={filterRange}/>
             </Card.Body>
           </Card>
           </Col>
@@ -205,7 +262,7 @@ const Dashboard = () => {
         <Card className="shadow-sm" style={{ height: "280px" }}>
           <Card.Body>
             <Card.Title> Live Disaster Trends</Card.Title>
-            <LineChart/>
+            <LineChart filterRange={filterRange}/>
           </Card.Body>
         </Card>
         </Col>

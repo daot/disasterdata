@@ -70,8 +70,10 @@ const Feed = ({ selectedDisaster }) => {
                       tweet ? (
                           <div key={index} className="tweet">
                             <div className="tweet-header">
-                              <strong>{tweet.handle ?? "Unknown Author"}</strong> 
-                              <small>{(new Date(tweet.timestamp + "Z").toLocaleString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true })) ?? "No date available"}</small>
+                              <a className="tweet-profile-link" href={tweet.url ?? ("https://bsky.app/profile/"+(tweet.handle ?? ""))}>
+                                <strong>@{tweet.handle ?? "Unknown Author"}</strong> 
+                                <small>{(new Date(tweet.timestamp + "Z").toLocaleString('en-US', { month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true })) ?? "No date available"}</small>
+                              </a>
                               <br />
                             </div>
                             <div className="tweet-text">
