@@ -125,6 +125,25 @@
     color: var(--foreground-color);
   }
 
+  .leaflet-control.legend {
+    background: white;
+    padding: 10px;
+    line-height: 18px;
+    color: #333;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+    border-radius: 5px;
+    font-size: 14px;
+  }
+  
+  /* Style the colored boxes in the legend */
+  .leaflet-control.legend i {
+    width: 1px;
+    height: 18px;
+    float: left;
+    margin-right: 8px;
+    opacity: 0.8;
+  }
+
 #linechart-l {
   display: none;
 }
