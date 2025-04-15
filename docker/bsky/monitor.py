@@ -238,6 +238,8 @@ async def process_posts(session, queue):
 
         # Get the locations
         location = get_location(text)
+        if location is None: # SKIP posts that do not mention a location
+            continue
         sentiment = analyze_sentiment(text)
 
         # Clean the text and get the prediction
