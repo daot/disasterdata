@@ -2,30 +2,29 @@ import React, { useEffect, useState } from "react";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import "leaflet.heat";
-import useFetchCoordinates from "./useFetchCoordinates"; // Import the custom hook
+import useFetchCoordinates from "./useFetchCoordinates";
 
-const HeatMap = () => {
+const HeatMap = ({ selectedDisasterType }) => {
   const [map, setMap] = useState(null);
   const [heatLayer, setHeatLayer] = useState(null);
-  const coordinates = useFetchCoordinates(); // Fetch coordinates
+  const coordinates = useFetchCoordinates(selectedDisasterType); // Fetch coordinates based on selected disaster type
+
+  // Normalize sentiment from [-1, 1] → [0, 1]
+  const normalizeSentiment = (value) => (value + 1) / 2;
 
   useEffect(() => {
     // Initialize the map only once
     if (!map) {
-      if (L.DomUtil.get("heatmap") !== null) {
-        L.DomUtil.get("heatmap")._leaflet_id = null;
-      }
-
       const newMap = L.map("heatmap", {
         center: [37.8, -96], // Center of the US
         zoom: 5,
-        minZoom: 3,
-        maxZoom: 11,
+        minZoom: 1,
+        maxZoom: 10,
         maxBounds: [
-          [-90, -180], // Southwest corner
-          [90, 180], // Northeast corner
+          [-90, -180], // Southwest
+          [90, 180],   // Northeast
         ],
-        maxBoundsViscosity: 0.5, // Keeps the map inside bounds
+        maxBoundsViscosity: 0.5,
       });
 
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(newMap);
@@ -34,23 +33,39 @@ const HeatMap = () => {
   }, [map]);
 
   useEffect(() => {
+    console.log("HeatMap updated:", selectedDisasterType);
+    console.log("Coordinates for heatmap:", coordinates);
+
     if (map && coordinates.length > 0) {
+      // Remove the previous heatmap layer if it exists
       if (heatLayer) {
         map.removeLayer(heatLayer);
       }
 
-      // Filter points within the US
-      const usCoordinates = coordinates.filter(
-        (coord) =>
-          coord.latitude >= -90 && coord.latitude <= 90 && // Latitude range
-          coord.longitude >= -180 && coord.longitude <= 180 // Longitude range
-      );
+      // Normalize sentiment from [-1, 1] → [0, 1]
+      const points = coordinates.map((coord) => {
+        const normalizedIntensity = normalizeSentiment(coord.sentiment);
+        return [coord.lat, coord.lng, normalizedIntensity];
+      });
+      
+      // Create the heatmap layer with the new data
+      const newHeatLayer = L.heatLayer(points, {
+        radius: 20,
+        blur: 5,
+        maxZoom: 4,
+        gradient: {
+          0.0: "#00ff00", // Green — high sentiment (low intensity)
+          0.25: "#aaff00", 
+          0.5: "#ffff00",  // Yellow — neutral
+          0.75: "#ffaa00",
+          1.0: "#ff0000"   // Red — low sentiment (high intensity)
+        }
+        
+      }).addTo(map);
 
-      const heatPoints = usCoordinates.map(coord => [coord.latitude, coord.longitude, 1.0]);
-      const newHeatLayer = L.heatLayer(heatPoints, { radius: 25, blur: 15, maxZoom: 10 }).addTo(map);
-      setHeatLayer(newHeatLayer);
+      setHeatLayer(newHeatLayer); // Update the state to keep track of the heatLayer
     }
-  }, [map, coordinates]); // Only update when coordinates change
+  }, [map, coordinates, selectedDisasterType]);  // Trigger this effect when selectedDisasterType or coordinates change
 
   return (
     <div id="heatmap" className="mt-3" style={{ height: "250px", background: "lightgray" }}></div>
