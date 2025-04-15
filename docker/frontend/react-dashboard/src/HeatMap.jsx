@@ -44,7 +44,7 @@ const HeatMap = ({ selectedDisasterType }) => {
 
       // Normalize sentiment from [-1, 1] → [0, 1]
       const points = coordinates.map((coord) => {
-        const normalizedIntensity = normalizeSentiment(coord.sentiment);
+        const normalizedIntensity = normalizeSentiment(coord.sentiment_scaled);
         return [coord.lat, coord.lng, normalizedIntensity];
       });
       
