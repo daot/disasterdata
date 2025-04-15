@@ -69,6 +69,8 @@ def view_feed_data():
     disaster_type = request.args.get("disaster_type")
     if disaster_type is None:
         return jsonify({"error": "disaster_type parameter is required"}), 400
+    if disaster_type is not ["flood", "wildfire", "earthquake", "hurricane", "tornado"]:
+        return jsonify({"error": "disaster_type parameter must be one of the following: flood, wildfire, earthquake, hurricane, tornado"}), 400
     return Response(
         json.dumps(process.fetch_text(disaster_type, start_date, end_date), ensure_ascii=False, indent=4),
         mimetype='application/json'
@@ -81,6 +83,7 @@ def fetch_coordinates():
     disaster_type = request.args.get("disaster_type")
     if disaster_type is None:
         return jsonify({"error": "disaster_type parameter is required"}), 400
+
     return jsonify(process.fetch_location_coordinates(disaster_type, start_date, end_date))
 
 if __name__ == "__main__":

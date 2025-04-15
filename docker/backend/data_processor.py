@@ -22,7 +22,8 @@ class DataProcessor:
 
         self.redis_cli = redis.Redis(host=redis_host, port=redis_port, db=0, decode_responses=True)
         self.cache_df = self.load_cache_data()
-        #all timestamps should be in pd.Timestamp format 
+
+        #all timestamps should be in UTC format 
         self.latest_timestamp = self.load_latest_timestamp()
 
         self.api_url = os.getenv('API_URL')
@@ -58,8 +59,6 @@ class DataProcessor:
         if cache_data:
             try:
                 df = pd.read_json(cache_data)
-                if "timestamp" in df.columns:
-                    df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
                 return df
             except Exception as e:
                 return pd.DataFrame()
@@ -77,7 +76,7 @@ class DataProcessor:
         else:
             response = requests.get(f"{self.api_url}/get_latest_posts") # grab everything if no latest
         
-        # Update the latest timestamp
+        #Update the latest timestamp
         data = response.json()
         new_latest_timestamp = pd.to_datetime(data.get("latest_timestamp"), utc=True)
 
@@ -103,6 +102,8 @@ class DataProcessor:
     def filter_data(self, since=None, latest=None, label=None, norm_loc=False, location=False, specific_location=None, sentiment=False):
         """Data filtering based on what the other functions need"""
         df = self.cache_df.copy() # changed to cache_df
+
+        #all timestamps in UTC format
         df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
         if since:
             df = df[df["timestamp"] >= pd.to_datetime(since, utc=True)]
@@ -111,9 +112,7 @@ class DataProcessor:
         if label:
             df = df[df["label"] == label]
         if norm_loc:
-            df = df[df["norm_loc"].notna()]
-        if location:
-            df = df[df["location"].notna()]
+            df = df[df['lat'].notna() & df['lng'].notna() & (df['lat'] != 0) & (df['lng'] != 0)]
         if specific_location:
             df = df[df["location"]==specific_location]
         if sentiment:
@@ -129,10 +128,11 @@ class DataProcessor:
             end_date = pd.to_datetime(datetime.utcnow(), utc=True)
             start_date = end_date - timedelta(days=1)
         
-        #If only start_date or only end_date is provided
+        #only start_date provided 
         if start_date and not end_date:
             end_date = self.cache_df["timestamp"].max()
-
+        
+        #only end_date is provided
         if end_date and not start_date:
             start_date = self.cache_df["timestamp"].min()
         
@@ -157,6 +157,9 @@ class DataProcessor:
 
         #filter by date range
         df = self.filter_data(since=start_date, latest=end_date)
+        if df.empty:
+            return {"error": "No posts found for the given date range"}
+
         count = df["label"].value_counts().to_dict() 
         total_count = df["label"].count()
         results = [
@@ -176,6 +179,8 @@ class DataProcessor:
 
         #filter by date range and disaster type
         df = self.filter_data(since=start_date, latest=end_date, label=disaster_type)
+        if df.empty:
+            return {"error": "No posts found for the given date range"}
         all_cleaned_text = " ".join(df["cleaned"].astype(str))
         words = [word for word in all_cleaned_text.split() if word not in self.stop_words and not word.isdigit() and len(word)> 3]
         count = Counter(words)
@@ -207,7 +212,7 @@ class DataProcessor:
         #filtering by non-null locations and date range
         df = self.filter_data(since=start_date, latest=end_date, norm_loc=True) 
         if df.empty:
-            return {"Error": "No valid disasters mentioned in the last day"}
+            return {"Error": "No valid disasters mentioned in the given date range"}
         
         #Finding the most popular disaster-location pair
         top_pair = Counter(zip(df['label'], df['norm_loc'])).most_common(1)
@@ -244,12 +249,13 @@ class DataProcessor:
         #filter by date range and disaster type
         df = self.filter_data(since=start_date, latest=end_date, label=disaster_type)
         if df.empty:
-            return {"error": "disaster type not found"}
+            return {"error": "No posts found for the given date range"}
 
         df['timestamp'] = df['timestamp'].apply(lambda x: x.strftime('%Y-%m-%d %H:%M:%S') if pd.notnull(x) else '')
         return df[['text', 'handle', 'timestamp']].to_dict(orient="records")
     
     def fetch_location_coordinates(self, disaster_type, start_date=None, end_date=None):
+
         """Fetches coordinates based on label and optional date range"""
         validation = self.validate_date_range(start_date, end_date)
         if isinstance(validation, dict) and "error" in validation:
@@ -257,10 +263,11 @@ class DataProcessor:
         start_date, end_date = validation
 
         #filter by date range and disaster type
-        df = self.filter_data(since=start_date, latest=end_date, label=disaster_type, norm_loc=True)
+        df = self.filter_data(since=start_date, latest=end_date, label=disaster_type, norm_loc=True, sentiment=True)
         if df.empty:
             return {"error": f"only invalid locations for {disaster_type} found"}
-        return df[['norm_loc', 'lat', 'lng', 'sentiment']].to_dict(orient="records")
+
+        return df[['norm_loc', 'lat', 'lng', 'sentiment_scaled']].to_dict(orient="records")
         
         
 
