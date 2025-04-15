@@ -55,33 +55,11 @@ def check_cache(norm_loc, redis_cli):
         return norm_loc, coordinates.get("lat"), coordinates.get("lng")
     return None 
 
-def is_url(string):
-    try:
-        # Prepend scheme if missing
-        if not string.startswith(('http://', 'https://')):
-            string = 'http://' + string
-
-        result = urlparse(string)
-        netloc = result.netloc.lower()
-
-        # Valid URL if netloc contains at least one dot and isn't just www.
-        return bool(netloc and '.' in netloc and netloc != 'www.')
-    except Exception:
-        return False
-
 #@retry(stop_max_attempt_number=5, wait_fixed=2000)
 async def fetch_geocode(session, location, semaphore, redis_cli, GEOCODE_URL, API_KEY):
     """Checks cache first and geocodes and saves back into cache if location is not is not there"""
     if location is None:
         return None, None, None
-    
-    #Skipping location if it is a URL or if it is a digit
-    if is_url(location):
-        logging.info(f"Skipping URL location: {location}")
-        return location, None, None
-    if location.isdigit():
-        logging.info(f"Skipping numeric location: {location}")
-        return location, None, None
 
     #Location skipped if in cache
     norm_loc = normalize_location(location)
@@ -117,3 +95,5 @@ async def fetch_geocode(session, location, semaphore, redis_cli, GEOCODE_URL, AP
     
     logging.error(f"Failed to geocode: {location} (no results returned)")
     return location, None, None
+
+

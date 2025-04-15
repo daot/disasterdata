@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 
 DB_URL="http://disasterdata.duckdns.org:5001"
 logging.basicConfig(
-    filename="save_db__url_test.log",
+    filename="save_db_url_test.log",
     level=logging.DEBUG,
     filemode="w",
     format="%(asctime)s %(message)s"

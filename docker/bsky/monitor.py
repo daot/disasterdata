@@ -10,7 +10,6 @@ import hashlib
 import urllib.parse
 import joblib
 import redis
-import pandas as pd
 from geocode_redis import fetch_geocode
 from datetime import datetime, timedelta, timezone
 from atproto import AsyncClient
@@ -38,9 +37,7 @@ model, label_encoder = joblib.load("data_model/models/lgbm_model_encoder_v1.pkl"
 ### Maximum of 5 requests per second ###
 MAX_RPS = 5  
 semaphore = asyncio.Semaphore(MAX_RPS)
-redis_host = os.getenv('REDIS_HOST')
-redis_port = int(os.getenv('REDIS_PORT', 6379))
-redis_cli = redis.Redis(host=redis_host, port=redis_port, db=1, decode_responses=True)
+redis_cli = redis.Redis(host='localhost', port=6379, db=1, decode_responses=True)
 API_KEY = os.getenv('API_KEY')
 GEOCODE_URL = os.getenv('GEOCODE_URL') #Using HERE API
 
@@ -77,7 +74,6 @@ def clean_post(text):
     except Exception as e:
         logger.error("Error cleaning text: %s", e)
         return None
-
 
 ### Applies our model and returns the value of its prediction ###
 ### The default label is "other" in case of failure ###
@@ -176,14 +172,6 @@ async def fetch_posts(client, queue, queries, since, until):
                     logger.debug("Fetched %d posts.", len(response.posts))
             except exceptions.ModelError as e:
                 logger.debug("Mysterious aspect ratio error: %s", e)
-            except exceptions.UnauthorizedError as e:
-                logger.warning("Access token expired. Attempting to refresh session...")
-                try:
-                    await client.refresh_session()
-                    logger.info("Session refreshed successfully.")
-                except Exception as refresh_error:
-                    logger.error("Failed to refresh session: %s", refresh_error)
-                    await asyncio.sleep(30)  # backoff before retry
             except Exception as e:
                 logger.error("Error fetching posts: %s", e)
             await asyncio.sleep(API_TIMEOUT)
@@ -238,16 +226,14 @@ async def process_posts(session, queue):
 
         # Get the locations
         location = get_location(text)
-        if location is None: # SKIP posts that do not mention a location
-            continue
         sentiment = analyze_sentiment(text)
 
         # Clean the text and get the prediction
         cleaned = clean_post(text)
         label = predict_post(cleaned)
-
+        
         ### NEW CHANGE: Get the coordinates ###
-        norm_loc, lat, lng = await fetch_geocode(session, location, semaphore, redis_cli, GEOCODE_URL, API_KEY)
+        norm_loc, lat, lng = await fetch_geocode(location, session, semaphore, redis_cli, GEOCODE_URL, API_KEY)
 
         logger.info(
             "[%s] [%s: %s] %s (%s): \n%.150s%s",
@@ -354,7 +340,7 @@ async def main():
         )
         since = (datetime.now() - time_range).strftime("%Y-%m-%dT%H:%M:%SZ")  # CST
         until = ""
-
+    
     ### NEW CHANGE: Load CSV files into Redis if not already loaded ###
     if redis_cli.dbsize() < 60754:
         await asyncio.gather(
