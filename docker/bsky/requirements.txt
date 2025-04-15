@@ -18,3 +18,4 @@ lightgbm
 redis
 us
 retrying
+vaderSentiment

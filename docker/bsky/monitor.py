@@ -14,7 +14,6 @@ import pandas as pd
 from geocode_redis import fetch_geocode
 from datetime import datetime, timedelta, timezone
 from atproto import AsyncClient
-from textblob import TextBlob
 from pprint import pprint
 from urllib.parse import urljoin
 from atproto_client import exceptions
@@ -22,6 +21,7 @@ from dotenv import load_dotenv
 from preprocess import bsk_preprocessor_sw, locations
 from nlp_loader import get_nlp, get_p
 from sklearn.preprocessing import LabelEncoder
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 ### GLOBAL VARS ###
 
@@ -33,6 +33,7 @@ REQUEST_LIMIT = int(os.environ.get("REQUEST_LIMIT", "3000"))
 TIME_WINDOW = int(os.environ.get("TIME_WINDOW", "300"))
 API_TIMEOUT = float(os.environ.get("API_TIMEOUT", TIME_WINDOW / REQUEST_LIMIT / 1000))
 model, label_encoder = joblib.load("data_model/models/lgbm_model_encoder_v1.pkl")
+analyzer = SentimentIntensityAnalyzer() # Initialize the vader sentiment analyzer
 
 ### NEW CHANGE: Redis connection and Global Variables ###
 ### Maximum of 5 requests per second ###
@@ -191,9 +192,8 @@ async def fetch_posts(client, queue, queries, since, until):
 
 def analyze_sentiment(text):
     """Analyzes the sentiment of the text and returns decimal value"""
-    blob = TextBlob(text)
-    polarity = blob.sentiment.polarity
-    return polarity
+    sentiment_score = analyzer.polarity_scores(text)['compound']
+    return sentiment_score
 
 ### NEW CHANGE: Function to load data into Redis from CSV 
 ### Pipelines converted data frame to Redis in batches
