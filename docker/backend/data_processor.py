@@ -3,7 +3,7 @@ import requests
 import sqlite3
 from collections import Counter
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
 import os
 import nltk
@@ -59,6 +59,7 @@ class DataProcessor:
         if cache_data:
             try:
                 df = pd.read_json(cache_data)
+                df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
                 return df
             except Exception as e:
                 return pd.DataFrame()
@@ -99,7 +100,7 @@ class DataProcessor:
 
         return self.cache_df
 
-    def filter_data(self, since=None, latest=None, label=None, norm_loc=False, location=False, specific_location=None, sentiment=False):
+    def filter_data(self, since=None, latest=None, label=None, coordinates=False, location_column=None, specific_location=None, sentiment=False):
         """Data filtering based on what the other functions need"""
         df = self.cache_df.copy() # changed to cache_df
 
@@ -111,10 +112,12 @@ class DataProcessor:
             df = df[df["timestamp"] < pd.to_datetime(latest, utc=True) + timedelta(days=1)]
         if label:
             df = df[df["label"] == label]
-        if norm_loc:
-            df = df[df['lat'].notna() & df['lng'].notna() & (df['lat'] != 0) & (df['lng'] != 0)]
-        if specific_location:
-            df = df[df["location"]==specific_location]
+        if location_column:
+            df = df[df[location_column].notna()]
+            if specific_location:
+                df = df[df[location_column] == specific_location]
+            if coordinates:
+                df = df[df["lat"].notna() & df["lng"].notna() & (df['lat'] != 0) & (df['lng'] != 0)]
         if sentiment:
             df['sentiment'] = pd.to_numeric(df['sentiment'], errors='coerce')
             df['sentiment_scaled'] = (df['sentiment'] - df['sentiment'].min()) / (df['sentiment'].max() - df['sentiment'].min())
@@ -170,6 +173,7 @@ class DataProcessor:
             "total label count": int(total_count),
             "results": results
         }
+
     def fetch_most_frequent(self, disaster_type, start_date=None, end_date=None):
         """Finds the most common words based on label or over entire dataset"""
         validation = self.validate_date_range(start_date, end_date)
@@ -210,21 +214,41 @@ class DataProcessor:
         start_date, end_date = validation
 
         #filtering by non-null locations and date range
-        df = self.filter_data(since=start_date, latest=end_date, norm_loc=True) 
+        ###norm_loc locations before 4/14 are null, so use the "location" column for those before that cutoff date###
+
+        cutoff_date = datetime(2025, 4, 14, tzinfo=timezone.utc)
+        if start_date >= cutoff_date:
+            location_column = "norm_loc"
+        else:
+            location_column = "location"
+
+        df = self.filter_data(since=start_date, latest=end_date, location_column=location_column) 
+        print("Filtered DataFrame shape:", df.shape)
+        print("Top 5 rows:")
+        print(df[['label', location_column, 'sentiment']].head())
         if df.empty:
             return {"Error": "No valid disasters mentioned in the given date range"}
         
         #Finding the most popular disaster-location pair
-        top_pair = Counter(zip(df['label'], df['norm_loc'])).most_common(1)
+        top_pair = Counter(zip(df['label'], df[location_column])).most_common(1)
         if not top_pair:
             return {"Error": "No valid disaster-location pairs"}
         top_label, top_location = top_pair[0][0]
 
         #Filter data again to get only the entries related to the pair
         df_filtered = self.filter_data(since=start_date, latest=end_date, label=top_label, specific_location=top_location, sentiment=True)
+        print("Filtered Pair DataFrame shape:", df_filtered.shape)
+        print("Sentiment Stats:", df_filtered['sentiment'].describe())
 
         #Danger Level calculated by mean of sentiment scores
         avg_sentiment = df_filtered['sentiment_scaled'].mean()
+        if pd.isna(avg_sentiment):
+            return {
+            "top_label": str(top_label),
+            "location": str(top_location),
+            "danger_level": "unknown",
+            "danger_value": None
+            }
         if avg_sentiment <= -0.5:
             danger_level = "high"
         elif avg_sentiment < 0.5:
@@ -263,7 +287,7 @@ class DataProcessor:
         start_date, end_date = validation
 
         #filter by date range and disaster type
-        df = self.filter_data(since=start_date, latest=end_date, label=disaster_type, norm_loc=True, sentiment=True)
+        df = self.filter_data(since=start_date, latest=end_date, label=disaster_type, location_column="norm_loc", coordinates=True, sentiment=True)
         if df.empty:
             return {"error": f"only invalid locations for {disaster_type} found"}
 
