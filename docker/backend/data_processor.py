@@ -59,7 +59,7 @@ class DataProcessor:
         if cache_data:
             try:
                 df = pd.read_json(cache_data)
-                df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
+                #df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
                 return df
             except Exception as e:
                 return pd.DataFrame()
@@ -100,7 +100,7 @@ class DataProcessor:
 
         return self.cache_df
 
-    def filter_data(self, since=None, latest=None, label=None, coordinates=False, location_column=None, specific_location=None, sentiment=False):
+    def filter_data(self, since=None, latest=None, label=None, coordinates=False, location_column=None, specific_location=None):
         """Data filtering based on what the other functions need"""
         df = self.cache_df.copy() # changed to cache_df
 
@@ -118,9 +118,6 @@ class DataProcessor:
                 df = df[df[location_column] == specific_location]
             if coordinates:
                 df = df[df["lat"].notna() & df["lng"].notna() & (df['lat'] != 0) & (df['lng'] != 0)]
-        if sentiment:
-            df['sentiment'] = pd.to_numeric(df['sentiment'], errors='coerce')
-            df['sentiment_scaled'] = (df['sentiment'] - df['sentiment'].min()) / (df['sentiment'].max() - df['sentiment'].min())
         return df
 
     def validate_date_range(self, start_date, end_date):
@@ -223,9 +220,6 @@ class DataProcessor:
             location_column = "location"
 
         df = self.filter_data(since=start_date, latest=end_date, location_column=location_column) 
-        print("Filtered DataFrame shape:", df.shape)
-        print("Top 5 rows:")
-        print(df[['label', location_column, 'sentiment']].head())
         if df.empty:
             return {"Error": "No valid disasters mentioned in the given date range"}
         
@@ -237,11 +231,10 @@ class DataProcessor:
 
         #Filter data again to get only the entries related to the pair
         df_filtered = self.filter_data(since=start_date, latest=end_date, label=top_label, specific_location=top_location, sentiment=True)
-        print("Filtered Pair DataFrame shape:", df_filtered.shape)
-        print("Sentiment Stats:", df_filtered['sentiment'].describe())
 
         #Danger Level calculated by mean of sentiment scores
-        avg_sentiment = df_filtered['sentiment_scaled'].mean()
+        avg_sentiment = df_filtered['sentiment'].mean()
+
         if pd.isna(avg_sentiment):
             return {
             "top_label": str(top_label),
@@ -249,6 +242,7 @@ class DataProcessor:
             "danger_level": "unknown",
             "danger_value": None
             }
+
         if avg_sentiment <= -0.5:
             danger_level = "high"
         elif avg_sentiment < 0.5:
@@ -291,7 +285,7 @@ class DataProcessor:
         if df.empty:
             return {"error": f"only invalid locations for {disaster_type} found"}
 
-        return df[['norm_loc', 'lat', 'lng', 'sentiment_scaled']].to_dict(orient="records")
+        return df[['norm_loc', 'lat', 'lng', 'sentiment']].to_dict(orient="records")
         
         
 
