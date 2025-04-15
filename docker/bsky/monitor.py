@@ -230,6 +230,12 @@ async def process_posts(session, queue):
         author = post.author.display_name
         handle = post.author.handle
 
+        ## PREFILTERING STUFF ##
+        # Adding some users we know tend to spam and are irrelevant to our use case:
+        bad_handles = ['simmersmiley.bsky.social', 'aquatron.bsky.social']
+        if handle in bad_handles:
+            continue
+
         ## Implementing a minimum word count
         # SKIP posts that do not meet the minimum word count
         min_words = 8
