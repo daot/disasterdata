@@ -235,7 +235,7 @@ async def process_posts(session, queue):
         label = predict_post(cleaned)
         
         ### NEW CHANGE: Get the coordinates ###
-        norm_loc, lat, lng = await fetch_geocode(location, session, semaphore, redis_cli, GEOCODE_URL, API_KEY)
+        norm_loc, lat, lng = await fetch_geocode(session, location, semaphore, redis_cli, GEOCODE_URL, API_KEY)
 
         logger.info(
             "[%s] [%s: %s] %s (%s): \n%.150s%s",
