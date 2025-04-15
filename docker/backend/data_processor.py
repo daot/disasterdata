@@ -10,10 +10,17 @@ import nltk
 from nltk.corpus import stopwords
 import inflect
 import redis
+from typing import Optional, Dict
 
 load_dotenv()
 nltk.download("stopwords")
 
+class AtUri:
+    def __init__(self, repo: str, collection: str, rkey: str):
+        self.repo = repo
+        self.collection = collection
+        self.rkey = rkey
+        
 class DataProcessor:
     def __init__(self):
         """Fetches data once to be used across all API calls"""
@@ -46,6 +53,41 @@ class DataProcessor:
         self.stop_words.update({p.number_to_words(i) for i in range(0,1001)})
         self.fetch_data()
 
+        self.uri_templates: Dict[str, Dict[str, str]] = {
+            "app.bsky.actor.profile": {
+                "label": "Bluesky",
+                "link": lambda uri: f"https://bsky.app/profile/{uri.repo}",
+            },
+            "app.bsky.feed.post": {
+                "label": "Bluesky",
+                "link": lambda uri: f"https://bsky.app/profile/{uri.repo}/post/{uri.rkey}",
+            },
+            "app.bsky.graph.list": {
+                "label": "Bluesky",
+                "link": lambda uri: f"https://bsky.app/profile/{uri.repo}/lists/{uri.rkey}",
+            },
+            "app.bsky.feed.generator": {
+                "label": "Bluesky",
+                "link": lambda uri: f"https://bsky.app/profile/{uri.repo}/feed/{uri.rkey}",
+            },
+            "fyi.unravel.frontpage.post": {
+                "label": "Frontpage",
+                "link": lambda uri: f"https://frontpage.fyi/post/{uri.repo}/{uri.rkey}",
+            },
+            "com.whtwnd.blog.entry": {
+                "label": "WhiteWind",
+                "link": lambda uri: f"https://whtwnd.com/{uri.repo}/{uri.rkey}",
+            },
+            "com.shinolabs.pinksea.oekaki": {
+                "label": "PinkSea",
+                "link": lambda uri: f"https://pinksea.art/{uri.repo}/oekaki/{uri.rkey}",
+            },
+            "blue.linkat.board": {
+                "label": "Linkat",
+                "link": lambda uri: f"https://linkat.blue/{uri.repo}",
+            },
+        }
+
     def load_latest_timestamp(self):
         latest_timestamp = self.redis_cli.get("latest_timestamp")
         if latest_timestamp:
@@ -59,7 +101,7 @@ class DataProcessor:
         if cache_data:
             try:
                 df = pd.read_json(cache_data)
-                #df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
+                df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
                 return df
             except Exception as e:
                 return pd.DataFrame()
@@ -100,7 +142,7 @@ class DataProcessor:
 
         return self.cache_df
 
-    def filter_data(self, since=None, latest=None, label=None, coordinates=False, location_column=None, specific_location=None):
+    def filter_data(self, since=None, latest=None, label=None, coordinates=False, location_column=None, specific_location=None, sentiment=False):
         """Data filtering based on what the other functions need"""
         df = self.cache_df.copy() # changed to cache_df
 
@@ -118,6 +160,9 @@ class DataProcessor:
                 df = df[df[location_column] == specific_location]
             if coordinates:
                 df = df[df["lat"].notna() & df["lng"].notna() & (df['lat'] != 0) & (df['lng'] != 0)]
+        if sentiment:
+            df['sentiment'] = pd.to_numeric(df['sentiment'], errors='coerce')
+            df['sentiment_scaled'] = (df['sentiment'] - df['sentiment'].min()) / (df['sentiment'].max() - df['sentiment'].min())
         return df
 
     def validate_date_range(self, start_date, end_date):
@@ -220,6 +265,9 @@ class DataProcessor:
             location_column = "location"
 
         df = self.filter_data(since=start_date, latest=end_date, location_column=location_column) 
+        print("Filtered DataFrame shape:", df.shape)
+        print("Top 5 rows:")
+        print(df[['label', location_column, 'sentiment']].head())
         if df.empty:
             return {"Error": "No valid disasters mentioned in the given date range"}
         
@@ -231,10 +279,11 @@ class DataProcessor:
 
         #Filter data again to get only the entries related to the pair
         df_filtered = self.filter_data(since=start_date, latest=end_date, label=top_label, specific_location=top_location, sentiment=True)
+        print("Filtered Pair DataFrame shape:", df_filtered.shape)
+        print("Sentiment Stats:", df_filtered['sentiment'].describe())
 
         #Danger Level calculated by mean of sentiment scores
-        avg_sentiment = df_filtered['sentiment'].mean()
-
+        avg_sentiment = df_filtered['sentiment_scaled'].mean()
         if pd.isna(avg_sentiment):
             return {
             "top_label": str(top_label),
@@ -242,7 +291,6 @@ class DataProcessor:
             "danger_level": "unknown",
             "danger_value": None
             }
-
         if avg_sentiment <= -0.5:
             danger_level = "high"
         elif avg_sentiment < 0.5:
@@ -257,6 +305,26 @@ class DataProcessor:
             "danger_value": float(avg_sentiment)
             }
 
+    def check_uri(self, uri_str):
+        if uri_str is None:
+            return None
+        
+        parts = str(uri_str).split("/")
+        if len(parts) != 5 or parts[0] != "at:" or parts[1] != "":
+            return None
+
+        uri = AtUri(repo=parts[2], collection=parts[3], rkey=parts[4])
+        template = self.uri_templates.get(uri.collection)
+
+        if not template:
+            return None
+
+        return {
+            "label": template["label"],
+            "link": template["link"](uri),
+        }
+
+
     def fetch_text(self, disaster_type, start_date=None, end_date=None):
 
         validation = self.validate_date_range(start_date, end_date)
@@ -270,7 +338,8 @@ class DataProcessor:
             return {"error": "No posts found for the given date range"}
 
         df['timestamp'] = df['timestamp'].apply(lambda x: x.strftime('%Y-%m-%d %H:%M:%S') if pd.notnull(x) else '')
-        return df[['text', 'handle', 'timestamp']].to_dict(orient="records")
+        df['url'] = df['id'].apply(lambda x: self.check_uri(x)['link'] if pd.notnull(x) else '')
+        return df[['text', 'handle', 'timestamp', 'url']].to_dict(orient="records")
     
     def fetch_location_coordinates(self, disaster_type, start_date=None, end_date=None):
 
@@ -285,7 +354,7 @@ class DataProcessor:
         if df.empty:
             return {"error": f"only invalid locations for {disaster_type} found"}
 
-        return df[['norm_loc', 'lat', 'lng', 'sentiment']].to_dict(orient="records")
+        return df[['norm_loc', 'lat', 'lng', 'sentiment_scaled']].to_dict(orient="records")
         
         
 
