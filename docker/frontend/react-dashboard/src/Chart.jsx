@@ -43,6 +43,7 @@ const Graph = React.memo(({ urlQuery }) => {
 
         const style = getComputedStyle(document.documentElement)
         const colors = [style.getPropertyValue('--red'), style.getPropertyValue('--orange'), style.getPropertyValue('--yellow'), style.getPropertyValue('--green'), style.getPropertyValue('--purple')];
+        const borderColors = colors;
 
         setData({
           labels: labels,
@@ -50,8 +51,7 @@ const Graph = React.memo(({ urlQuery }) => {
             {
               data: values,
               backgroundColor: colors,
-              borderColor: colors,
-              borderWidth: 1,
+              borderColor: borderColors,
               hoverBackgroundColor: colors,
             },
           ],
@@ -93,7 +93,7 @@ const Graph = React.memo(({ urlQuery }) => {
           {error ? (
             <p>{error}</p>
           ) : data ? (
-            <Pie data={data} options={options} />
+            <Pie updateMode="active" data={data} options={options} />
           ) : (
             <p>{loading ? "Loading chart..." : "No valid data found."}</p>
           )}
