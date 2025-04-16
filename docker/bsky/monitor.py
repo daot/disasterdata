@@ -13,10 +13,9 @@ import redis
 import pandas as pd
 from geocode_redis import fetch_geocode
 from datetime import datetime, timedelta, timezone
-from atproto import AsyncClient
 from pprint import pprint
 from urllib.parse import urljoin
-from atproto_client import exceptions
+from atproto_client import exceptions, AsyncClient, Session, SessionEvent
 from dotenv import load_dotenv
 from preprocess import bsk_preprocessor_sw, locations
 from nlp_loader import get_nlp, get_p
@@ -179,6 +178,13 @@ async def fetch_posts(client, queue, queries, since, until):
                 logger.debug("Mysterious aspect ratio error: %s", e)
             except Exception as e:
                 logger.error("Error fetching posts: %s", e)
+                logger.warning("Attempting to refresh session.")
+                try:
+                    await client.com.atproto.server.refresh_session()
+                    logger.info("Session refreshed successfully.")
+                except Exception as refresh_error:
+                    logger.error("Failed to refresh session: %s", refresh_error)
+                    await asyncio.sleep(30)
             await asyncio.sleep(API_TIMEOUT)
 
 
@@ -282,6 +288,45 @@ async def process_posts(session, queue):
         )
         queue.task_done()
 
+def get_session():
+    try:
+        with open('session.txt', encoding='UTF-8') as f:
+            return f.read()
+    except FileNotFoundError:
+        return None
+
+def save_session(session_string):
+    with open('session.txt', 'w', encoding='UTF-8') as f:
+        f.write(session_string)
+
+def on_session_change(event, session):
+    print('Session changed:', event, repr(session))
+    if event in (SessionEvent.CREATE, SessionEvent.REFRESH):
+        print('Saving changed session')
+        save_session(session.export())
+
+async def init_client(username, password):
+    client = AsyncClient()
+    client.on_session_change(on_session_change)
+
+    try:
+        session_string = get_session()
+        if session_string:
+            print('Reusing session')
+            await client.login(session_string=session_string)
+        else:
+            print('Creating new session')
+            await client.login(username, password)
+        logger.info("Successfully logged in...")
+    except ValueError:
+        logger.error("Username or password is incorrect")
+        exit()
+    except KeyError:
+        logger.error("Missing username or password")
+        exit()
+
+    return client
+
 
 async def main():
     logger.info("Starting Bluesky monitoring script.")
@@ -315,16 +360,7 @@ async def main():
     )
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logger.info("Starting the new AsyncClient")
-    client = AsyncClient()
-    try:
-        await client.login(os.environ["BSKY_USER"], os.environ["BSKY_PASS"])
-        logger.info("Successfully logged in...")
-    except ValueError:
-        logger.error("Username or password is incorrect")
-        exit()
-    except KeyError:
-        logger.error("Missing username or password")
-        exit()
+    client = await init_client(os.environ["BSKY_USER"], os.environ["BSKY_PASS"])
 
     if (os.environ.get("SINCE") and not os.environ.get("UNTIL")) or (
         os.environ.get("UNTIL") and not os.environ.get("SINCE")

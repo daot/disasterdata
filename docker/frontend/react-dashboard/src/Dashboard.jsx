@@ -16,8 +16,8 @@ const Dashboard = () => {
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleString());
   const [urlQuery, setUrlQuery] = useState('');
   const [rangeName, setRangeName] = useState('in the Past Day');
-  const startFilter = "april 10, 2025"
-  const endFilter = "april 12, 2025"
+  const [customRangeFrom, setCustomRangeFrom] = useState('');
+  const [customRangeTo, setCustomRangeTo] = useState('');
 
   useEffect(() => {
     const now = new Date();
@@ -51,8 +51,8 @@ const Dashboard = () => {
             setRangeName('in the Past Year');
             break;
           case 'custom':
-            const customStart = new Date(startFilter);
-            const customEnd = new Date(endFilter);
+            const customStart = new Date(customRangeFrom);
+            const customEnd = new Date(customRangeTo);
             if (
               !isNaN(customStart.getTime()) &&
               !isNaN(customEnd.getTime()) &&
@@ -60,12 +60,13 @@ const Dashboard = () => {
             ) {
               start = customStart;
               end = customEnd;
+              setRangeName('from ' + customRangeFrom + ' to ' + customRangeTo);
             } else {
               console.warn('Invalid custom date range');
-              start = null;
-              end = null;
+              start = new Date(0);
+              end = new Date("2262-04-10 23:47:16.854775807Z");
+              setRangeName('of All Time');
             }
-            setRangeName('from ' + start.toLocaleDateString() + ' to ' + end.toLocaleDateString());
             break;
           default:
             start = null;
@@ -84,7 +85,7 @@ const Dashboard = () => {
     }, 1000); // Update every second
 
     return () => clearInterval(interval); 
-  }, [filterRange, startFilter, endFilter]);
+  }, [filterRange, customRangeFrom, customRangeTo]);
 
   return (
     <div className="m-0">
@@ -139,8 +140,22 @@ const Dashboard = () => {
             </Button>
           </ButtonGroup>
           <div className="input-group m-0 justify-content-center align-items-start" style={{ width: "200px", paddingLeft: "12px"}}>
-            <input id="custom-range-from" className="form-control" type="text" placeholder="From:"/>
-            <input id="custom-range-to" className="form-control" type="text" placeholder="To:"/>
+            <input 
+              id="custom-range-from" 
+              className="form-control" 
+              type="text" 
+              placeholder="From:"
+              value={customRangeFrom}
+              onChange={(e) => setCustomRangeFrom(e.target.value)}
+            />
+            <input 
+              id="custom-range-to" 
+              className="form-control" 
+              type="text" 
+              placeholder="To:"
+              value={customRangeTo}
+              onChange={(e) => setCustomRangeTo(e.target.value)}
+            />
           </div>
         </Card.Body>
       </Card>
