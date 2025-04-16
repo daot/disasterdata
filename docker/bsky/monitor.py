@@ -188,16 +188,13 @@ async def fetch_posts(client, queue, queries, since, until):
             except Exception as e:
                 logger.error("Error fetching posts: %s", e)
                 ### Trying to resolve mysterious token issue ###
-                if hasattr(e, "response") and hasattr(e.response, "content"):
-                    content = e.response.content
-                    if isinstance(content, dict) and content.get("error") == "InvalidToken":
-                        logger.warning("Token invalid — refreshing session.")
-                        try:
-                            await client.refresh_session()
-                            logger.info("Session refreshed successfully.")
-                        except Exception as refresh_error:
-                            logger.error("Failed to refresh session: %s", refresh_error)
-                            await asyncio.sleep(30)
+                logger.warning("Attempting to refresh session.")
+                try:
+                    await client.refresh_session()
+                    logger.info("Session refreshed successfully.")
+                except Exception as refresh_error:
+                    logger.error("Failed to refresh session: %s", refresh_error)
+                    await asyncio.sleep(30)
             await asyncio.sleep(API_TIMEOUT)
 
 
