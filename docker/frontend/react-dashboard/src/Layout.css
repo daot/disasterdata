@@ -239,16 +239,6 @@ body {
         font-size: 1.1rem;
     }
     
-    /* Ensure crisp text rendering on high DPI screens */
-    body {
-        text-rendering: optimizeLegibility;
-    }
-    
-    /* Fix for charts and SVG elements to render sharply */
-    canvas, svg {
-        image-rendering: crisp-edges;
-    }
-    
     /* Add bottom margin to the last row to prevent cut-off */
     .container-fluid > .row:last-child {
         margin-bottom: 30px;
