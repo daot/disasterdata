@@ -34,16 +34,15 @@ const HeatMap = React.memo(({ urlQuery, selectedDisasterType }) => {
     console.log("Coordinates for heatmap:", coordinates);
 
     if (map && coordinates.length > 0) {
-      // Remove the previous heatmap layer if it exists
-      if (heatLayer) {
-        map.removeLayer(heatLayer);
-      }
-
       // Normalize sentiment from [-1, 1] → [0, 1]
       const points = coordinates.map((coord) => {
         const normalizedIntensity = normalizeSentiment(coord.sentiment_scaled);
         return [coord.lat, coord.lng, normalizedIntensity];
       });
+
+      console.log("POINTS: ", points);
+
+      const style = getComputedStyle(document.documentElement)
       
       // Create the heatmap layer with the new data
       const newHeatLayer = L.heatLayer(points, {
@@ -51,15 +50,19 @@ const HeatMap = React.memo(({ urlQuery, selectedDisasterType }) => {
         blur: 5,
         maxZoom: 4,
         gradient: {
-          0.0: "#00ff00", // Green — high sentiment (low intensity)
-          0.25: "#aaff00", 
-          0.5: "#ffff00",  // Yellow — neutral
-          0.75: "#ffaa00",
-          1.0: "#ff0000"   // Red — low sentiment (high intensity)
+          0.0: style.getPropertyValue('--purple'), // Purple — high sentiment (low intensity)
+          0.25: style.getPropertyValue('--green'), // Green — medium sentiment (low intensity)
+          0.5: style.getPropertyValue('--yellow'),  // Yellow — neutral
+          0.75: style.getPropertyValue('--orange'), // Orange — low sentiment (medium intensity)
+          1.0: style.getPropertyValue('--red')   // Red — low sentiment (high intensity)
         }
         
       }).addTo(map);
 
+      // Remove the previous heatmap layer if it exists
+      if (heatLayer) {
+        map.removeLayer(heatLayer);
+      }
       setHeatLayer(newHeatLayer); // Update the state to keep track of the heatLayer
     }
   }, [map, coordinates, urlQuery, selectedDisasterType]);  // Trigger this effect when selectedDisasterType or coordinates change

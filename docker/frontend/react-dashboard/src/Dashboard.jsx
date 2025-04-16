@@ -233,13 +233,6 @@ const Dashboard = () => {
               {/* Disaster Type Buttons */}
               <ButtonGroup className="button-group">
                 <Button
-                  variant={selectedDisasterFeed === "hurricane" ? "primary" : "outline-primary"}
-                  onClick={() => setSelectedDisasterFeed("hurricane")}
-                  
-                >
-                  Hurricane
-                </Button>
-                <Button
                   variant={selectedDisasterFeed === "flood" ? "primary" : "outline-primary"}
                   onClick={() => setSelectedDisasterFeed("flood")}
                   
@@ -259,6 +252,13 @@ const Dashboard = () => {
                   
                 >
                   Tornado
+                </Button>
+                <Button
+                  variant={selectedDisasterFeed === "hurricane" ? "primary" : "outline-primary"}
+                  onClick={() => setSelectedDisasterFeed("hurricane")}
+                  
+                >
+                  Hurricane
                 </Button>
                 <Button
                   variant={selectedDisasterFeed === "earthquake" ? "primary" : "outline-primary"}
