@@ -10,6 +10,7 @@ const useFetchCoordinates = (selectedDisasterType = "earthquake", urlQuery = "")
     const fetchCoordinatesForType = async () => {
       const allData = [];
 
+      setCoordinates(allData);
       try {
         let url = `${API_HOST}/fetch-coordinates-by-label?disaster_type=${selectedDisasterType}${urlQuery ? ("&" + urlQuery) : ""}`;
 
