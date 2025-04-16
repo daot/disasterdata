@@ -177,24 +177,8 @@ async def fetch_posts(client, queue, queries, since, until):
                     logger.debug("Fetched %d posts.", len(response.posts))
             except exceptions.ModelError as e:
                 logger.debug("Mysterious aspect ratio error: %s", e)
-            except exceptions.UnauthorizedError as e:
-                logger.warning("Access token expired. Attempting to refresh session...")
-                try:
-                    await client.refresh_session()
-                    logger.info("Session refreshed successfully.")
-                except Exception as refresh_error:
-                    logger.error("Failed to refresh session: %s", refresh_error)
-                    await asyncio.sleep(30)  # backoff before retry
             except Exception as e:
                 logger.error("Error fetching posts: %s", e)
-                ### Trying to resolve mysterious token issue ###
-                logger.warning("Attempting to refresh session.")
-                try:
-                    await client.refresh_session()
-                    logger.info("Session refreshed successfully.")
-                except Exception as refresh_error:
-                    logger.error("Failed to refresh session: %s", refresh_error)
-                    await asyncio.sleep(30)
             await asyncio.sleep(API_TIMEOUT)
 
 
@@ -330,10 +314,11 @@ async def main():
         ],
     )
     logging.getLogger("httpx").setLevel(logging.WARNING)
-
+    logger.info("Starting the new AsyncClient")
     client = AsyncClient()
     try:
         await client.login(os.environ["BSKY_USER"], os.environ["BSKY_PASS"])
+        logger.info("Successfully logged in...")
     except ValueError:
         logger.error("Username or password is incorrect")
         exit()
