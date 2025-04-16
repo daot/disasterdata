@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import "leaflet.heat";
@@ -10,6 +10,7 @@ const HeatMap = React.memo(({ urlQuery, selectedDisasterType }) => {
   const [map, setMap] = useState(null);
   const [heatLayer, setHeatLayer] = useState(null);
   const [coordinates, setCoordinates] = useState([]);
+  const [lastCoordinatesId, setLastCoordinatesId] = useState(null);
 
   // Regular function for fetching coordinates, not a hook
   const fetchCoordinates = async (disasterType = "earthquake", query = "") => {
@@ -75,6 +76,29 @@ const HeatMap = React.memo(({ urlQuery, selectedDisasterType }) => {
   // Normalize sentiment from [-1, 1] → [0, 1]
   const normalizeSentiment = (value) => (value + 1) / 2;
   
+  // Memoize the processed points to avoid recalculating on every render
+  const points = useMemo(() => {
+    if (coordinates.length === 0) return [];
+    
+    // Create a unique identifier for this set of coordinates to check for changes
+    const coordinatesId = JSON.stringify(coordinates.map(c => `${c.lat}-${c.lng}-${c.sentiment_scaled}`));
+    
+    // Only recalculate if the coordinates have changed
+    if (coordinatesId !== lastCoordinatesId) {
+      console.log("Processing new coordinates to points");
+      setLastCoordinatesId(coordinatesId);
+      
+      // Normalize sentiment from [-1, 1] → [0, 1]
+      return coordinates.map((coord) => {
+        const normalizedIntensity = normalizeSentiment(coord.sentiment_scaled);
+        return [coord.lat, coord.lng, normalizedIntensity];
+      });
+    }
+    
+    // If we have this cached, return the existing points
+    return points;
+  }, [coordinates, lastCoordinatesId]);
+
   useEffect(() => {
     if (!map) {
       const newMap = L.map("heatmap", {
@@ -108,17 +132,11 @@ const HeatMap = React.memo(({ urlQuery, selectedDisasterType }) => {
   }, [urlQuery, selectedDisasterType]);
 
   useEffect(() => {
-    if (map && coordinates.length > 0) {
+    if (map && coordinates.length > 0 && points.length > 0) {
       // Remove the previous heatmap layer if it exists
       if (heatLayer) {
         map.removeLayer(heatLayer);
       }
-
-      // Normalize sentiment from [-1, 1] → [0, 1]
-      const points = coordinates.map((coord) => {
-        const normalizedIntensity = normalizeSentiment(coord.sentiment_scaled);
-        return [coord.lat, coord.lng, normalizedIntensity];
-      });
 
       console.log("POINTS: ", points);
 
@@ -140,7 +158,7 @@ const HeatMap = React.memo(({ urlQuery, selectedDisasterType }) => {
       }).addTo(map);
       setHeatLayer(newHeatLayer); // Update the state to keep track of the heatLayer
     }
-  }, [map, coordinates, heatLayer]);
+  }, [map, points, heatLayer]);
 
   return (
     <div id="heatmap" className="mt-3" style={{ height: "250px", background: "lightgray" }}></div>
