@@ -11,7 +11,7 @@ const HeatMap = React.memo(({ urlQuery, selectedDisasterType }) => {
   
   // Normalize sentiment from [-1, 1] → [0, 1]
   const normalizeSentiment = (value) => (value + 1) / 2;
-
+  
   useEffect(() => {
     if (!map) {
       const newMap = L.map("heatmap", {
@@ -29,11 +29,18 @@ const HeatMap = React.memo(({ urlQuery, selectedDisasterType }) => {
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(newMap);
       setMap(newMap);
     }
+  }, [map]);
 
+  useEffect(() => {
     console.log("HeatMap updated:", selectedDisasterType);
     console.log("Coordinates for heatmap:", coordinates);
 
     if (map && coordinates.length > 0) {
+      // Remove the previous heatmap layer if it exists
+      if (heatLayer) {
+        map.removeLayer(heatLayer);
+      }
+
       // Normalize sentiment from [-1, 1] → [0, 1]
       const points = coordinates.map((coord) => {
         const normalizedIntensity = normalizeSentiment(coord.sentiment_scaled);
@@ -58,11 +65,6 @@ const HeatMap = React.memo(({ urlQuery, selectedDisasterType }) => {
         }
         
       }).addTo(map);
-
-      // Remove the previous heatmap layer if it exists
-      if (heatLayer) {
-        map.removeLayer(heatLayer);
-      }
       setHeatLayer(newHeatLayer); // Update the state to keep track of the heatLayer
     }
   }, [map, coordinates, urlQuery, selectedDisasterType]);  // Trigger this effect when selectedDisasterType or coordinates change
