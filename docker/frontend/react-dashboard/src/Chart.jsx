@@ -11,7 +11,6 @@ const Graph = React.memo(({ urlQuery }) => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const chartRef = useRef(null);
   
   const fetchPieData = () => {
     setLoading(true);
@@ -94,7 +93,7 @@ const Graph = React.memo(({ urlQuery }) => {
           {error ? (
             <p>{error}</p>
           ) : data ? (
-            <Pie ref={chartRef} data={data} options={options} />
+            <Pie data={data} options={options} />
           ) : (
             <p>{loading ? "Loading chart..." : "No valid data found."}</p>
           )}
