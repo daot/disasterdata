@@ -10,9 +10,14 @@ const KeywordCloud = React.memo(({ urlQuery, selectedDisasterType }) => {
   const [wordData, setWordData] = useState({});
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [initialLoad, setInitialLoad] = useState(true);
 
   const fetchDataForDisasterType = useCallback(async () => {
-    setLoading(true);
+    // Only show loading on initial fetch, not refreshes
+    if (initialLoad) {
+      setLoading(true);
+    }
+    
     try {
       const results = await Promise.all(
         disasterTypes.map(async (type) => {
@@ -43,8 +48,11 @@ const KeywordCloud = React.memo(({ urlQuery, selectedDisasterType }) => {
       setError("Failed to load keyword cloud");
     } finally {
       setLoading(false);
+      if (initialLoad) {
+        setInitialLoad(false);
+      }
     }
-  }, [urlQuery, selectedDisasterType]);
+  }, [urlQuery, initialLoad]);
 
   useEffect(() => {
     fetchDataForDisasterType(); // Initial fetch
@@ -87,7 +95,7 @@ const KeywordCloud = React.memo(({ urlQuery, selectedDisasterType }) => {
     <div style={{ width: "100%", height: "200px", textAlign: "center" }}>
       {error ? (
         <p style={{ color: "red" }}>{error}</p>
-      ) : loading ? (
+      ) : initialLoad && loading ? (
         <p>Loading keyword cloud...</p>
       ) : words.length > 0 ? (
         <WordCloud

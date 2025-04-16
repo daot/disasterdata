@@ -13,7 +13,6 @@ const HeatMap = React.memo(({ urlQuery, selectedDisasterType }) => {
   const normalizeSentiment = (value) => (value + 1) / 2;
 
   useEffect(() => {
-    // Initialize the map only once
     if (!map) {
       const newMap = L.map("heatmap", {
         center: [37.8, -96], // Center of the US
@@ -30,9 +29,7 @@ const HeatMap = React.memo(({ urlQuery, selectedDisasterType }) => {
       L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(newMap);
       setMap(newMap);
     }
-  }, [map]);
 
-  useEffect(() => {
     console.log("HeatMap updated:", selectedDisasterType);
     console.log("Coordinates for heatmap:", coordinates);
 

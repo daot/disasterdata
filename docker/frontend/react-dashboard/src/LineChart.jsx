@@ -3,6 +3,7 @@ import { Line } from "react-chartjs-2";
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from "chart.js";
 
 const API_HOST = process.env.REACT_APP_API_HOST;
+const style = getComputedStyle(document.documentElement)
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
@@ -13,7 +14,6 @@ const LineChart = React.memo(({ urlQuery }) => {
   });
 
   const getColor = (disasterType) => {
-    const style = getComputedStyle(document.documentElement)
     const colorMap = {
       hurricane: style.getPropertyValue('--yellow'),
       flood: style.getPropertyValue('--red'),
@@ -77,22 +77,22 @@ const LineChart = React.memo(({ urlQuery }) => {
         position: "top",
         labels: {
           font: { size: 8 },
-          color: "white",
+          color: style.getPropertyValue('--foreground-color'),
         },
       },
     },
     scales: {
       x: {
-        title: { display: true, text: "Date (Year-Month)", color: "white" },
-        ticks: { color: "white" },
-        grid: { color: "white" },
+        title: { display: true, text: "Date (Year-Month)", color: style.getPropertyValue('--foreground-color') },
+        ticks: { color: style.getPropertyValue('--foreground-color') },
+        grid: { color: style.getPropertyValue('--foreground-color') },
       },
       y: {
-        title: { display: true, text: "Number of Posts", color: "white" },
-        ticks: { color: "white" },
-        grid: { color: "white" },
+        title: { display: true, text: "Number of Posts", color: style.getPropertyValue('--foreground-color') },
+        ticks: { color: style.getPropertyValue('--foreground-color') },
+        grid: { color: style.getPropertyValue('--foreground-color') },
       },
-    },
+    }
   };
 
   return (

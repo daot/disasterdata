@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Pie } from "react-chartjs-2";
 import { Card } from "react-bootstrap";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
@@ -11,11 +11,21 @@ const Graph = React.memo(({ urlQuery }) => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-
+  const [forceUpdate, setForceUpdate] = useState(0);
+  const chartRef = useRef(null);
+  
+  // Force a re-render after mount to ensure styles are applied correctly
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setForceUpdate(prev => prev + 1);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
+  
   const fetchPieData = () => {
     setLoading(true);
     setError(null);
-
+    
     fetch(API_HOST + `/fetch-label-count${urlQuery ? ("?" + urlQuery) : ""}`)
       .then((response) => {
         if (!response.ok) {
@@ -41,17 +51,24 @@ const Graph = React.memo(({ urlQuery }) => {
         const labels = filteredResults.map((item) => item.label);
         const values = filteredResults.map((item) => item.percentage);
 
-        const style = getComputedStyle(document.documentElement)
-        const colors = [style.getPropertyValue('--red'), style.getPropertyValue('--orange'), style.getPropertyValue('--yellow'), style.getPropertyValue('--green'), style.getPropertyValue('--purple')];
-        const borderColors = colors;
-
+        // Get current style for consistent rendering
+        const currentStyle = getComputedStyle(document.documentElement);
+        const colors = [
+          currentStyle.getPropertyValue('--red'),
+          currentStyle.getPropertyValue('--orange'), 
+          currentStyle.getPropertyValue('--yellow'), 
+          currentStyle.getPropertyValue('--green'), 
+          currentStyle.getPropertyValue('--purple')
+        ];
+        
         setData({
           labels: labels,
           datasets: [
             {
               data: values,
               backgroundColor: colors,
-              borderColor: borderColors,
+              borderColor: colors, // Use the same array for consistency
+              borderWidth: 1,
               hoverBackgroundColor: colors,
             },
           ],
@@ -69,15 +86,17 @@ const Graph = React.memo(({ urlQuery }) => {
     const intervalId = setInterval(fetchPieData, 60000); // auto-refresh every 60 sec
 
     return () => clearInterval(intervalId); // cleanup on unmount
-  }, [urlQuery]);
+  }, [urlQuery, forceUpdate]); // Add forceUpdate as dependency
 
+  // Get current style when rendering options
+  const currentStyle = getComputedStyle(document.documentElement);
   const options = {
     plugins: {
       legend: {
         position: "bottom",
         labels: {
           font: { size: 12 },
-          color: getComputedStyle(document.documentElement).getPropertyValue('--foreground-color'),
+          color: currentStyle.getPropertyValue('--foreground-color'),
         },
       },
     },
@@ -90,14 +109,12 @@ const Graph = React.memo(({ urlQuery }) => {
       <Card.Body>
         <Card.Title>Which Natural Disasters Dominate?</Card.Title>
         <div style={{ width: "100%", height: "190px", margin: "auto" }}>
-          {loading ? (
-            <p>Loading chart...</p>
-          ) : error ? (
+          {error ? (
             <p>{error}</p>
           ) : data ? (
-            <Pie data={data} options={options} />
+            <Pie ref={chartRef} data={data} options={options} />
           ) : (
-            <p>No valid data found.</p>
+            <p>{loading ? "Loading chart..." : "No valid data found."}</p>
           )}
         </div>
       </Card.Body>
