@@ -90,13 +90,10 @@ def clean_dataframe(df):
 def locations(text, nlp=get_nlp()):
     doc = nlp(text)
     for ent in doc.ents:
-        #if ent.label_ == "GPE" or ent.label_ == "LOC":
         if ent.label_ == "GPE":
             loc = ent.text
             if not re.search(r"[^a-zA-Z\s.,]", loc):
                 return loc
-            else:
-                return None
     return None
 
 def preprocess_dataframe(df):
