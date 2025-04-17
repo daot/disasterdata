@@ -208,7 +208,7 @@ async def load_csv(filename):
         city = row.city
         mapping = {"lat": row.lat, "lng": row.lng}
         pipeline.hset(city, mapping=mapping)
-        logging.info(f"Added {city} to Redis with mapping: {mapping}")    
+        #logging.info(f"Added {city} to Redis with mapping: {mapping}")    
     pipeline.execute()
     logging.info(f"Finished processing {filename}.")
 
