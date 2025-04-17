@@ -3,9 +3,6 @@ pandas
 requests
 asyncio
 aiohttp
-nltk
-rapidfuzz
-inflect
 us
 python-dotenv
 flask-cors

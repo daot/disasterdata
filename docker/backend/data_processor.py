@@ -1,19 +1,17 @@
 import pandas as pd
 import requests
-import sqlite3
 from collections import Counter
 import json
 from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
 import os
-import nltk
-from nltk.corpus import stopwords
-import inflect
 import redis
+import spacy 
 from typing import Optional, Dict
 
 load_dotenv()
-nltk.download("stopwords")
+nlp = spacy.load("en_core_web_sm")
+#nlp.max_length = 3000000
 
 class AtUri:
     def __init__(self, repo: str, collection: str, rkey: str):
@@ -35,10 +33,8 @@ class DataProcessor:
 
         self.api_url = os.getenv('API_URL')
         self.location_database = os.getenv('CACHE_FILE')
-
-        p = inflect.engine()
-        self.stop_words = set(stopwords.words("english"))
-        additional_stop_words = [
+        
+        self.additional_stop_words = set([
             'tornado', 
             'hurricane', 
             'wildfire', 
@@ -47,10 +43,11 @@ class DataProcessor:
             'flooding',
             'watchedskysocialappalerts', 
             'hundred',
-            'thousand'
-        ]
-        self.stop_words.update((additional_stop_words))
-        self.stop_words.update({p.number_to_words(i) for i in range(0,1001)})
+            'thousand',
+            'bskysocial',
+            'iembot'
+        ])
+        self.full_stop_words = nlp.Defaults.stop_words.union(self.additional_stop_words)
         self.fetch_data()
 
         self.uri_templates: Dict[str, Dict[str, str]] = {
@@ -101,7 +98,7 @@ class DataProcessor:
         if cache_data:
             try:
                 df = pd.read_json(cache_data)
-                df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
+                #df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
                 return df
             except Exception as e:
                 return pd.DataFrame()
@@ -142,27 +139,37 @@ class DataProcessor:
 
         return self.cache_df
 
-    def filter_data(self, since=None, latest=None, label=None, coordinates=False, location_column=None, specific_location=None, sentiment=False):
+    def filter_data(self, since, latest, **kwargs):
         """Data filtering based on what the other functions need"""
         df = self.cache_df.copy() # changed to cache_df
+        try:
+            since = pd.to_datetime(since, utc=True)
+            latest = pd.to_datetime(latest, utc=True)
+        except Exception:
+            raise ValueError("'since' and 'latest' must be valid datetime strings and are required paramters.")
 
         #all timestamps in UTC format
         df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
-        if since:
-            df = df[df["timestamp"] >= pd.to_datetime(since, utc=True)]
-        if latest:
-            df = df[df["timestamp"] < pd.to_datetime(latest, utc=True) + timedelta(days=1)]
+        df = df[(df["timestamp"] >= since) & (df["timestamp"] < latest + timedelta(days=1))]
+
+        label = kwargs.get("label")
         if label:
             df = df[df["label"] == label]
+        
+        location_column = kwargs.get("location_column")
         if location_column:
             df = df[df[location_column].notna()]
+
+            specific_location = kwargs.get("specific_location")
             if specific_location:
                 df = df[df[location_column] == specific_location]
+            
+            coordinates = kwargs.get("coordinates")
             if coordinates:
                 df = df[df["lat"].notna() & df["lng"].notna() & (df['lat'] != 0) & (df['lng'] != 0)]
-        if sentiment:
-            df['sentiment'] = pd.to_numeric(df['sentiment'], errors='coerce')
-            df['sentiment_scaled'] = (df['sentiment'] - df['sentiment'].min()) / (df['sentiment'].max() - df['sentiment'].min())
+        #if sentiment:
+            #df['sentiment'] = pd.to_numeric(df['sentiment'], errors='coerce')
+            #df['sentiment_scaled'] = (df['sentiment'] - df['sentiment'].min()) / (df['sentiment'].max() - df['sentiment'].min())
         return df
 
     def validate_date_range(self, start_date, end_date):
@@ -226,12 +233,32 @@ class DataProcessor:
         #filter by date range and disaster type
         df = self.filter_data(since=start_date, latest=end_date, label=disaster_type)
         if df.empty:
-            return {"error": "No posts found for the given date range"}
+            return {"error": "No posts found for the given date range and disaster_type"}
         all_cleaned_text = " ".join(df["cleaned"].astype(str))
-        words = [word for word in all_cleaned_text.split() if word not in self.stop_words and not word.isdigit() and len(word)> 3]
+
+        words = self.process_large_text(all_cleaned_text)
+        
         count = Counter(words)
         return [{"keyword": str(word), "count": int(freq)} for word, freq in count.most_common(20)]
     
+    def process_large_text(self, text, chunk_size=1000000):
+        """Processes large texts in chunks to avoid memory overload."""
+        chunks = [text[i:i + chunk_size] for i in range(0, len(text), chunk_size)]
+        words = []
+        
+        with nlp.disable_pipes("ner"):
+            for chunk in chunks:
+                doc = nlp(chunk)
+                words.extend([
+                    token.lemma_ for token in doc
+                    if token.pos_ in ["NOUN", "PROPN"]
+                    and token.text.lower() not in self.full_stop_words
+                    and not token.is_punct
+                    and not token.like_num
+                    and len(token.lemma_) > 3
+                ])
+        return words
+
     def fetch_posts_over_time(self, disaster_type, start_date=None, end_date=None):
         """Finds the posts per day based on disaster type"""
         validation = self.validate_date_range(start_date, end_date)
@@ -278,12 +305,10 @@ class DataProcessor:
         top_label, top_location = top_pair[0][0]
 
         #Filter data again to get only the entries related to the pair
-        df_filtered = self.filter_data(since=start_date, latest=end_date, label=top_label, specific_location=top_location, sentiment=True)
-        print("Filtered Pair DataFrame shape:", df_filtered.shape)
-        print("Sentiment Stats:", df_filtered['sentiment'].describe())
+        df_filtered = self.filter_data(since=start_date, latest=end_date, label=top_label, specific_location=top_location)
 
         #Danger Level calculated by mean of sentiment scores
-        avg_sentiment = df_filtered['sentiment_scaled'].mean()
+        avg_sentiment = df_filtered['sentiment'].mean()
         if pd.isna(avg_sentiment):
             return {
             "top_label": str(top_label),
@@ -350,7 +375,7 @@ class DataProcessor:
         start_date, end_date = validation
 
         #filter by date range and disaster type
-        df = self.filter_data(since=start_date, latest=end_date, label=disaster_type, location_column="norm_loc", coordinates=True, sentiment=True)
+        df = self.filter_data(since=start_date, latest=end_date, label=disaster_type, location_column="norm_loc", coordinates=True)
         if df.empty:
             return {"error": f"only invalid locations for {disaster_type} found"}
 
