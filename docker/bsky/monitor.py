@@ -246,9 +246,17 @@ async def process_posts(session, queue):
             continue
         sentiment = analyze_sentiment(text)
 
-        # Clean the text and get the prediction
-        cleaned = clean_post(text)
-        label = predict_post(cleaned)
+        ## NEW FEATURE: let's also be able to query for cyclone and typhoon.
+        # if query was cyclone or typhoon, replace that word with hurricane
+        # this is because the model was trained on texts containing the word hurricane
+        if query is ('typhoon' or 'cyclone'):
+            mod_text = text.replace(query, 'hurricane')
+            cleaned = clean_post(text) # still store cleaned version from the original text
+            label = predict_post(clean_post(mod_text)) # but get the label from the modified text
+        else:
+            # Clean the text and get the prediction
+            cleaned = clean_post(text)
+            label = predict_post(cleaned)
 
         ### NEW CHANGE: Get the coordinates ###
         norm_loc, lat, lng = await fetch_geocode(session, location, semaphore, redis_cli, GEOCODE_URL, API_KEY)
