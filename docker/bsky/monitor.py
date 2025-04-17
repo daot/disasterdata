@@ -304,6 +304,7 @@ def get_session():
         return None
 
 def save_session(session_string):
+    print(json.dumps(session_string, indent=2))
     with open('session.txt', 'w', encoding='UTF-8') as f:
         f.write(session_string)
 
@@ -312,7 +313,6 @@ def on_session_change(event, session):
     if event in (SessionEvent.CREATE, SessionEvent.REFRESH):
         print('Saving changed session')
         save_session(session.export())
-        print(json.dumps(session_data, indent=2))
 
 async def init_client(username, password):
     client = AsyncClient()
