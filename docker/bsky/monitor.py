@@ -312,6 +312,7 @@ def on_session_change(event, session):
     if event in (SessionEvent.CREATE, SessionEvent.REFRESH):
         print('Saving changed session')
         save_session(session.export())
+        print(json.dumps(session_data, indent=2))
 
 async def init_client(username, password):
     client = AsyncClient()
