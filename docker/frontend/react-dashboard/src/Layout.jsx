@@ -6,7 +6,7 @@ const Layout = ({ children }) => {
   return (
     <>
       {/* Sidebar and Main Content */}
-      <Container id="main-container" className="d-flex justify-content-center align-items-center min-vh-100 pt-3 pb-3"> {/* Ensures it doesn’t shrink too much */}
+      <Container id="main-container" className="d-flex flex-column justify-content-center align-items-center"> 
         {children}
       </Container>
     </>

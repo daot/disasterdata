@@ -3,7 +3,7 @@ import { Card } from "react-bootstrap";
 
 const API_HOST = process.env.REACT_APP_API_HOST;
 
-const DangerLevel = () => {
+const DangerLevel = React.memo(({ urlQuery }) => {
     const style = getComputedStyle(document.documentElement)
     const [dangerLevel, setDangerLevel] = useState({ label: "None", color: style.getPropertyValue('--green'), disasterType: "", location: "" });
 
@@ -11,7 +11,7 @@ const DangerLevel = () => {
         const fetchDangerLevel = async () => {
             try {
                 //const response = await fetch('/fetch-top-disaster-last-day');  // Make sure this route is correct
-                const response = await fetch(API_HOST + '/fetch-top-disaster-last-day'); 
+                const response = await fetch(API_HOST + `/fetch-top-disaster-location${urlQuery ? ("?" + urlQuery) : ""}`); 
                 if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
                 const data = await response.json();
 
@@ -42,18 +42,24 @@ const DangerLevel = () => {
         const intervalId = setInterval(fetchDangerLevel, 60000);
 
         return () => clearInterval(intervalId);
-    }, []);
+    }, [urlQuery]);
+
+    const capitalize = (str) =>
+    str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : "";
 
     return (
         <Card className="shadow-sm" style={{ height: "100px", border: `2px solid ${dangerLevel.color}` }}>
-            <Card.Body>
-                <Card.Title>Danger Level</Card.Title>
-                <div style={{ fontSize: "1.25rem", fontWeight: "bold", color: dangerLevel.color }}>
+            <Card.Body className="d-flex flex-column justify-content-center align-items-start">
+            <Card.Title id="danger-level-title">
+                Danger Level{dangerLevel.disasterType && ` of ${capitalize(dangerLevel.disasterType)}`}
+                {dangerLevel.location && ` in ${dangerLevel.location}`}
+            </Card.Title>
+                <div id="danger-level" style={{ fontWeight: "bold", color: dangerLevel.color }}>
                     {dangerLevel.label}
                 </div>
             </Card.Body>
         </Card>
     );
-};
+});
 
 export default DangerLevel;

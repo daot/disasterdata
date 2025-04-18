@@ -13,6 +13,7 @@ load_dotenv()
 nlp = spacy.load("en_core_web_sm")
 #nlp.max_length = 3000000
 
+
 class AtUri:
     def __init__(self, repo: str, collection: str, rkey: str):
         self.repo = repo

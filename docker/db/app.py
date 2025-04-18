@@ -27,6 +27,7 @@ def get_db_connection():
 def init_table():
     with get_db_connection() as conn:
         with conn.cursor() as cur:
+            # Adjusted to include the new fields
             cur.execute(
                 """
                 CREATE TABLE IF NOT EXISTS posts (
@@ -39,7 +40,10 @@ def init_table():
                     cleaned TEXT,
                     label TEXT,
                     location TEXT,
-                    sentiment TEXT
+                    sentiment TEXT,
+                    norm_loc TEXT,
+                    lat REAL,
+                    lng REAL
                 )
                 """
             )
@@ -62,11 +66,25 @@ def add_row():
     request_data = request.form.to_dict()
 
     required_fields = {"id", "timestamp", "query", "handle", "text"}
-    optional_fields = {"author", "cleaned", "label", "location", "sentiment"}
+    optional_fields = {"author", "cleaned", "label", "location", "sentiment", "norm_loc", "lat", "lng"}
 
     if not required_fields.issubset(request_data.keys()):
         logger.error(f"Missing required fields")
         return {"error": "Missing required fields"}, 400
+    
+    # lat and lng to float
+    lat_data = request_data.get("lat")
+    lng_data = request_data.get("lng")
+    if lat_data and lng_data:
+        try:
+            lat = float(lat_data)
+            lng = float(lng_data)
+        except ValueError:
+            logger.error("Invalid lat or lng value")
+            return {"error": "Invalid lat or lng value"}, 400
+    else:
+        lat = None
+        lng = None
 
     values = (
         request_data.get("id"),
@@ -79,6 +97,9 @@ def add_row():
         request_data.get("label"),
         request_data.get("location"),
         request_data.get("sentiment"),
+        request_data.get("norm_loc"),
+        lat,
+        lng,
     )
 
     logger.info(
@@ -96,8 +117,8 @@ def add_row():
         with get_db_connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
-                    """INSERT INTO posts (id, timestamp, query, author, handle, text, cleaned, label, location, sentiment)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                    """INSERT INTO posts (id, timestamp, query, author, handle, text, cleaned, label, location, sentiment, norm_loc, lat, lng)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
                     values,
                 )
                 conn.commit()
@@ -115,11 +136,13 @@ def edit_row():
 
     row_id = request_data.pop("id")
 
-    allowed_fields = {"cleaned", "label", "location", "sentiment"}
+    allowed_fields = {"cleaned", "label", "location", "sentiment", "norm_loc", "lat", "lng"}
+    special_fields = {"lat", "lng"}
     if not request_data.keys() <= allowed_fields:
-        logger.error("Only 'cleaned', 'label', 'location', and 'sentiment' can be updated")
-        return {"error": "Only 'cleaned', 'label', 'location', and 'sentiment' can be updated"}, 400
+        logger.error("Only 'cleaned', 'label', 'location', 'sentiment', 'norm_loc', 'lat', and 'lng' can be updated")
+        return {"error": "Only 'cleaned', 'label', 'location', 'sentiment', 'norm_loc', 'lat', and 'lng' can be updated"}, 400
 
+    
     set_clause = ", ".join([f"{key} = %s" for key in request_data.keys()])
     values = tuple(request_data.values()) + (row_id,)
 
@@ -142,7 +165,7 @@ def get_latest_posts():
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT id, timestamp, query, author, handle, text, cleaned, label, location, sentiment
+                SELECT id, timestamp, query, author, handle, text, cleaned, label, location, sentiment, norm_loc, lat, lng
                 FROM posts WHERE timestamp > %s ORDER BY timestamp ASC
                 """,
                 (start_timestamp,),
@@ -164,7 +187,10 @@ def get_latest_posts():
             "cleaned": row[6],
             "label": row[7],
             "location": row[8],
-            "sentiment": row[9]
+            "sentiment": row[9],
+            "norm_loc": row[10],
+            "lat": row[11],
+            "lng": row[12]
         }
         posts.append(post)
         latest_timestamp = row[1]

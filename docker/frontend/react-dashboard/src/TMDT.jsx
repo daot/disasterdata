@@ -3,14 +3,14 @@ import { Card } from "react-bootstrap";
 
 const API_HOST = process.env.REACT_APP_API_HOST;
 
-const TMDT = () => {
+const TMDT = React.memo(({ rangeName, urlQuery }) => {
     const [topDisaster, setTopDisaster] = useState({ label: '', location: '' });
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchTopDisaster = async () => {
             try {
-                const response = await fetch(API_HOST + `/fetch-top-disaster-last-day`);
+                const response = await fetch(API_HOST + `/fetch-top-disaster-location${urlQuery ? ("?" + urlQuery) : ""}`);
                 const data = await response.json();
                 console.log('API response:', data);
                 setTopDisaster(data);
@@ -26,16 +26,7 @@ const TMDT = () => {
         const intervalId = setInterval(fetchTopDisaster, 60000);
 
         return () => clearInterval(intervalId);
-    }, []);
-
-    if (loading) return (
-        <Card className="shadow-sm" style={{ height: "100px"}}>
-            <Card.Body>
-                <Card.Title>Top Mentioned Disaster In The Last 24 Hrs</Card.Title>
-                    <div style={{ fontSize: "1.25rem"}}>Loading</div>
-            </Card.Body>
-        </Card>
-    );;
+    }, [urlQuery]);
 
     const capitalizeFirstLetter = (str) => {
         return str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : "";
@@ -43,14 +34,18 @@ const TMDT = () => {
 
     return (
         <Card className="shadow-sm" style={{ height: "100px"}}>
-            <Card.Body>
-                <Card.Title>Top Mentioned Disaster In The Last 24 Hrs</Card.Title>
-                    <div style={{ fontSize: "1.25rem"}}>
+            <Card.Body className="d-flex flex-column justify-content-center align-items-start">
+                <Card.Title id="current-disaster-title">Top Mentioned Disaster {rangeName}</Card.Title>
+                {loading ? (
+                    <div id="current-disaster">Loading...</div>
+                ) : (
+                    <div id="current-disaster">
                         Disaster: {capitalizeFirstLetter(topDisaster.top_label)}, Location: {topDisaster.location ? `(${topDisaster.location})` : ""}
                     </div>
+                )}
             </Card.Body>
         </Card>
     );
-};
+});
 
 export default TMDT;

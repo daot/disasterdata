@@ -6,18 +6,23 @@ const API_HOST = process.env.REACT_APP_API_HOST;
 
 const disasterTypes = ["hurricane", "flood", "wildfire", "tornado", "earthquake"];
 
-const KeywordCloud = React.memo(({ selectedDisasterType }) => {
+const KeywordCloud = React.memo(({ urlQuery, selectedDisasterType }) => {
   const [wordData, setWordData] = useState({});
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [initialLoad, setInitialLoad] = useState(true);
 
   const fetchDataForDisasterType = useCallback(async () => {
-    setLoading(true);
+    // Only show loading on initial fetch, not refreshes
+    if (initialLoad) {
+      setLoading(true);
+    }
+    
     try {
       const results = await Promise.all(
         disasterTypes.map(async (type) => {
           console.log(`Fetching data for disaster type: ${type}`);
-          const response = await fetch(API_HOST + `/fetch-most-frequent-word?disaster_type=${type}`);
+          const response = await fetch(API_HOST + `/fetch-most-frequent-word?disaster_type=${type}${urlQuery ? ("&" + urlQuery) : ""}`);
           if (!response.ok) throw new Error(`Failed to fetch data for ${type}`);
 
           const data = await response.json();
@@ -43,8 +48,11 @@ const KeywordCloud = React.memo(({ selectedDisasterType }) => {
       setError("Failed to load keyword cloud");
     } finally {
       setLoading(false);
+      if (initialLoad) {
+        setInitialLoad(false);
+      }
     }
-  }, []);
+  }, [urlQuery, initialLoad]);
 
   useEffect(() => {
     fetchDataForDisasterType(); // Initial fetch
@@ -87,7 +95,7 @@ const KeywordCloud = React.memo(({ selectedDisasterType }) => {
     <div style={{ width: "100%", height: "200px", textAlign: "center" }}>
       {error ? (
         <p style={{ color: "red" }}>{error}</p>
-      ) : loading ? (
+      ) : initialLoad && loading ? (
         <p>Loading keyword cloud...</p>
       ) : words.length > 0 ? (
         <WordCloud
