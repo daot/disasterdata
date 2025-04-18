@@ -45,6 +45,8 @@ def most_frequent():
     disaster_type = request.args.get("disaster_type")
     if not disaster_type:
         return jsonify({"error": "disaster_type parameter must be provided"}), 400
+    if disaster_type not in ["flood", "wildfire", "earthquake", "hurricane", "tornado"]:
+        return jsonify({"error": "disaster_type parameter must be one of the following: flood, wildfire, earthquake, hurricane, tornado"}), 400
     return jsonify(process.fetch_most_frequent(disaster_type, start_date, end_date))
 
 @app.route("/fetch-posts-over-time", methods=["GET"])
@@ -54,6 +56,8 @@ def posts_time():
     disaster_type = request.args.get("disaster_type")
     if not disaster_type:
         return jsonify({"error": "disaster_type parameter must be provided"}), 400
+     if disaster_type not in ["flood", "wildfire", "earthquake", "hurricane", "tornado"]:
+        return jsonify({"error": "disaster_type parameter must be one of the following: flood, wildfire, earthquake, hurricane, tornado"}), 400
     return jsonify(process.fetch_posts_over_time(disaster_type, start_date, end_date))
 
 @app.route("/fetch-top-disaster-location", methods=["GET"])
