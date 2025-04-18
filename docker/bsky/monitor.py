@@ -10,6 +10,8 @@ import hashlib
 import urllib.parse
 import joblib
 import redis
+import jwt
+import time
 import pandas as pd
 from geocode_redis import fetch_geocode
 from datetime import datetime, timedelta, timezone
@@ -296,6 +298,28 @@ async def process_posts(session, queue):
         )
         queue.task_done()
 
+
+# adding some debug stuff for our token issue
+def inspect_jwt(token, name="Token"):
+    try:
+        payload = jwt.decode(token, options={"verify_signature": False})
+        exp = payload.get("exp", 0)
+        iat = payload.get("iat", 0)
+        now = int(time.time())
+
+        print(f"🔍 {name} info:")
+        print(f" - Issued at: {time.ctime(iat)}")
+        print(f" - Expires at: {time.ctime(exp)}")
+        print(f" - Time left: {exp - now} seconds")
+        if now >= exp:
+            print(f"OOPS. {name} is EXPIRED.")
+        else:
+            print(f"YAY. {name} is still valid.")
+        return payload
+    except Exception as e:
+        print(f"OOPS. Failed to decode {name}: {e}")
+        return None
+
 def get_session():
     try:
         with open('session.txt', encoding='UTF-8') as f:
@@ -334,6 +358,9 @@ async def init_client(username, password):
         logger.error("Missing username or password")
         exit()
 
+    # Now let's see if the tokens exists and are valid ..
+    inspect_jwt(client.session.accessJwt, name="Access Token")
+    inspect_jwt(client.session.refreshJwt, name="Refresh Token") 
     return client
 
 
