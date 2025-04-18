@@ -182,17 +182,11 @@ async def fetch_posts(client, queue, queries, since, until):
                 logger.error("Error fetching posts: %s", e)
                 logger.warning("Attempting to refresh session.")
                 try:
-                    # trying force to use the refresh token for this call
-                    # for some reason it is definitely using the access token by default?
-                    refresh_token = client._session.refresh_jwt
-                    client.request.set_auth(refresh_token)
                     await client.com.atproto.server.refresh_session()
                     logger.info("Session refreshed successfully.")
                 except Exception as refresh_error:
                     logger.error("Failed to refresh session: %s", refresh_error)
                     await asyncio.sleep(30)
-                finally:
-                    client.request.set_auth(client._session.access_jwt) # set it back to access token
             await asyncio.sleep(API_TIMEOUT)
 
 
@@ -313,7 +307,7 @@ def inspect_jwt(token, name="Token"):
         iat = payload.get("iat", 0)
         now = int(time.time())
 
-        print(f"🔍 {name} info:")
+        print(f"{name} info:")
         print(f" - Issued at: {time.ctime(iat)}")
         print(f" - Expires at: {time.ctime(exp)}")
         print(f" - Time left: {exp - now} seconds")
