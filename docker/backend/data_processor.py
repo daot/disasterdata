@@ -33,7 +33,7 @@ class DataProcessor:
 
         self.api_url = os.getenv('API_URL')
         self.location_database = os.getenv('CACHE_FILE')
-        
+
         self.additional_stop_words = set([
             'tornado', 
             'hurricane', 
@@ -379,7 +379,7 @@ class DataProcessor:
         if df.empty:
             return {"error": f"only invalid locations for {disaster_type} found"}
 
-        return df[['norm_loc', 'lat', 'lng', 'sentiment_scaled']].to_dict(orient="records")
+        return df[['norm_loc', 'lat', 'lng', 'sentiment']].to_dict(orient="records")
         
         
 
