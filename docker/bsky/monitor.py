@@ -359,8 +359,8 @@ async def init_client(username, password):
         exit()
 
     # Now let's see if the tokens exists and are valid ..
-    inspect_jwt(client.session.accessJwt, name="Access Token")
-    inspect_jwt(client.session.refreshJwt, name="Refresh Token") 
+    inspect_jwt(client._session.accessJwt, name="Access Token")
+    inspect_jwt(client._session.refreshJwt, name="Refresh Token") 
     return client
 
 
