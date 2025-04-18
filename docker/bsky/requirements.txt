@@ -1,7 +1,7 @@
 asyncio
 aiohttp
 python-dateutil
-atproto
+atproto>=0.0.60
 textblob
 requests
 python-dotenv
@@ -17,3 +17,6 @@ preprocess
 lightgbm
 redis
 us
+retrying
+vaderSentiment
+pyjwt

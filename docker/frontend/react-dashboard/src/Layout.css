@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
 :root {
+    /* Color variables */
     --background-color: #2e3440;
     --current-line: #3b4252;
     --foreground-color: #eceff4;
@@ -13,126 +14,238 @@
     --purple: #b48ead;
     --red: #bf616a;
     --yellow: #ebcb8b;
-  }
+    
+    /* Sizing variables for responsive DPI scaling */
+    --base-font-size: 16px;
+    --card-padding: 1rem;
+    --container-max-width: 70%;
+    --button-font-size: 12px;
+    --button-padding: 2px 8px;
+    --tweet-container-height: 250px;
+    --heatmap-height: 250px;
+    --card-height-sm: 100px;
+    --card-height-md: 280px;
+    --card-height-lg: 350px;
+    --container-padding: 20px;
+}
   
-  body {
+body {
     background-color: var(--background-color) !important;
     color: var(--foreground-color) !important;
     margin: 0;
     padding: 0;
     font-family: "Roboto", sans-serif !important;
-  }
+    font-size: var(--base-font-size);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-y: auto; /* Enable vertical scrolling */
+    min-height: 100vh;
+    box-sizing: border-box;
+}
   
-  .layout-container {
+.layout-container {
     background-color: var(--background-color);
     color: var(--foreground-color);
     min-height: 100vh;
-  }
+}
   
-  .sidebar {
+.sidebar {
     background-color: var(--current-line);
     color: var(--foreground-color);
     padding: 15px;
     height: 100vh;
-  }
+}
   
-  .sidebar .nav-link {
+.sidebar .nav-link {
     color: var(--foreground-color) !important;
     transition: color 0.3s ease-in-out;
-  }
+}
   
-  .sidebar .nav-link:hover {
+.sidebar .nav-link:hover {
     color: var(--purple) !important;
-  }
+}
   
-  .main-content {
+.main-content {
     background-color: var(--background-color);
     color: var(--foreground-color);
     padding: 20px;
-  }
+}
   
-  .card {
+.card {
     background-color: var(--current-line) !important;
     color: var(--foreground-color) !important;
     border: none;
-  }
+}
   
-  .card-title {
+.card-title {
     color: var(--white) !important;
-  }
+}
   
-  .button-group .btn {
+.button-group .btn {
     color: var(--foreground-color);
-    padding: 2px 8px;
-    font-size: 12px;
+    padding: var(--button-padding);
+    font-size: var(--button-font-size);
     line-height: 1.25;
     border: 1px solid transparent;
     background-color: var(--frost-darkblue);
-  }
+}
   
-  .button-group .btn:hover {
+.button-group .btn:hover {
     background-color: var(--frost-lightblue);
     border-color: var(--frost-lightblue);
-  }
+}
 
-  .button-group .btn:active {
+.button-group .btn:active {
     background-color: var(--frost-green);
     border-color: var(--frost-green);
-  }
+}
 
-  .button-group .btn-primary {
+.button-group .btn-primary {
     background-color: var(--frost-midblue) !important;
     border-color: var(--frost-midblue) !important;
     color: var(--background-color) !important;
-  }
+}
   
-  .button-group .btn-outline-primary {
-    padding: 2px 8px;
-    font-size: 12px;
+.button-group .btn-outline-primary {
+    padding: var(--button-padding);
+    font-size: var(--button-font-size);
     line-height: 1.25;
-  }
+}
   
-  .tweet-container {
-    max-height: 250px;
+.tweet-container {
+    max-height: var(--tweet-container-height);
     overflow-y: auto;
     padding: 10px;
     border-radius: 5px;
     scroll-behavior: smooth; /* Enables smooth scrolling */ 
-  }
+}
 
-  .tweet {
+.tweet {
     margin-bottom: 10px;  /* Space between each tweet */
     padding: 10px;        /* Padding around each tweet */
     border-bottom: 1px solid var(--foreground-color);  /* Optional: Divider between tweets */
-  }
+}
 
 .tweet-header {
   font-size: 0.9rem;
   margin-bottom: 10px;  /* Space between header and tweet text */
 }
 
-  .tweet-header strong {
+.tweet-header strong {
     color: var(--frost-lightblue);  /* Optional: Style the author name */
     margin-right: 10px;
-  }
+}
 
-  .tweet-header small {
+.tweet-header small {
     color: var(--frost-darkblue);  /* Optional: Style the timestamp */
-  }
+}
 
-  .tweet-text p {
+.tweet-text p {
     font-size: 1rem;  /* Optional: Style the tweet text */
     color: var(--foreground-color);
-  }
+}
+
+.leaflet-control.legend {
+    background: white;
+    padding: 10px;
+    line-height: 18px;
+    color: #333;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+    border-radius: 5px;
+    font-size: 14px;
+}
+  
+/* Style the colored boxes in the legend */
+.leaflet-control.legend i {
+    width: 1px;
+    height: 18px;
+    float: left;
+    margin-right: 8px;
+    opacity: 0.8;
+}
 
 #linechart-l {
   display: none;
 }
 
 #main-container {
-  max-width: 70%;
+    height: 100vh;
+    max-width: var(--container-max-width);
+    padding-top: var(--container-padding);
+    padding-bottom: var(--container-padding);
+    min-height: 100%;
+    overflow-y: auto;
+    box-sizing: border-box;
 }
 
+#current-time, #current-disaster, #danger-level {
+    font-size: 1.25rem;
+}
+
+#custom-range-from, #custom-range-to {
+    height: 24px;
+    font-size: 12px;
+    background-color: var(--background-color);
+    border-color: var(--background-color);
+    color: var(--foreground-color);
+}
+
+.form-control::placeholder {
+    color: var(--foreground-color) !important;
+}
+
+.tweet-profile-link {
+    color: var(--frost-lightblue);
+    text-decoration: none;
+}
+
+.tweet-profile-link:hover {
+    opacity: 0.8;
+}
+
+/* Replace the problematic high-DPI media query with a better solution */
+@media screen and (min-resolution: 1.25dppx) {
+    :root {
+        /* Adjust sizes for high DPI displays */
+        --base-font-size: 14px;
+        --button-font-size: 11px;
+        --container-max-width: 85%;
+        --container-padding: 30px; /* More padding on high-DPI displays */
+    }
+    
+    /* Ensure content is fully visible */
+    body {
+        overflow-y: auto !important;
+        height: auto !important;
+        min-height: 100vh;
+    }
+    
+    #root {
+        height: auto !important;
+        min-height: 100vh;
+        overflow-y: auto;
+    }
+    
+    #main-container {
+        height: auto !important;
+        overflow-y: visible;
+    }
+    
+    .card-title {
+        font-size: 1.1rem !important;
+    }
+    
+    #current-time, #current-disaster, #danger-level {
+        font-size: 1.1rem;
+    }
+    
+    /* Add bottom margin to the last row to prevent cut-off */
+    .container-fluid > .row:last-child {
+        margin-bottom: 30px;
+    }
+}
+
+/* Remove the problematic media query and replace with this improved version */
 @media
 only screen and (-webkit-min-device-pixel-ratio: 1.25),
 only screen and ( min--moz-device-pixel-ratio: 1.25),
@@ -141,32 +254,53 @@ only screen and ( min-device-pixel-ratio: 1.25),
 only screen and ( min-resolution: 200dpi),
 only screen and ( min-resolution: 1.25dppx)
 {
-  html {
-    height: 100vh;
-  }
-
-  body {
-    height: 100%;
-  }
-
-  #root {
-    zoom: 0.9;
-    height: 100%;
-  } 
-
-  #main-container {
-    height: 100%;
-  }      
+    html {
+        height: auto;
+        min-height: 100%;
+    }
+    
+    body {
+        height: auto;
+        min-height: 100%;
+        overflow-y: auto;
+    }
+    
+    #root {
+        height: auto;
+        min-height: 100%;
+        overflow-y: auto;
+    }
+    
+    #main-container {
+        height: auto;
+        min-height: 100%;
+        padding-top: 30px;
+        padding-bottom: 30px;
+    }
 }
 
 @media (max-width: 1199.98px){
+    :root {
+        --container-max-width: 90%;
+    }
+    
     #linechart-l {
-      display: block;
+        display: block;
     }
+    
     #linechart-s {
-      display: none;
+        display: none;
     }
-    #main-container {
-      max-width: 90%;
+}
+
+@media (max-width: 1305px){
+    .h5 {
+        font-size: 1.0rem !important;
+    }
+}
+
+@media (max-width: 1550px){
+    #current-time, #current-disaster, #danger-level {
+        font-size: 1.0rem;
     }
 }

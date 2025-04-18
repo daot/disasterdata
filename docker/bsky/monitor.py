@@ -10,17 +10,19 @@ import hashlib
 import urllib.parse
 import joblib
 import redis
+import jwt
+import time
+import pandas as pd
 from geocode_redis import fetch_geocode
 from datetime import datetime, timedelta, timezone
-from atproto import AsyncClient
-from textblob import TextBlob
 from pprint import pprint
 from urllib.parse import urljoin
-from atproto_client import exceptions
+from atproto_client import exceptions, AsyncClient, Session, SessionEvent
 from dotenv import load_dotenv
 from preprocess import bsk_preprocessor_sw, locations
 from nlp_loader import get_nlp, get_p
 from sklearn.preprocessing import LabelEncoder
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 ### GLOBAL VARS ###
 
@@ -32,12 +34,15 @@ REQUEST_LIMIT = int(os.environ.get("REQUEST_LIMIT", "3000"))
 TIME_WINDOW = int(os.environ.get("TIME_WINDOW", "300"))
 API_TIMEOUT = float(os.environ.get("API_TIMEOUT", TIME_WINDOW / REQUEST_LIMIT / 1000))
 model, label_encoder = joblib.load("data_model/models/lgbm_model_encoder_v1.pkl")
+analyzer = SentimentIntensityAnalyzer() # Initialize the vader sentiment analyzer
 
 ### NEW CHANGE: Redis connection and Global Variables ###
 ### Maximum of 5 requests per second ###
 MAX_RPS = 5  
 semaphore = asyncio.Semaphore(MAX_RPS)
-redis_cli = redis.Redis(host='localhost', port=6379, db=1, decode_responses=True)
+redis_host = os.getenv('REDIS_HOST', 'redis')
+redis_port = int(os.getenv('REDIS_PORT', 6379))
+redis_cli = redis.Redis(host=redis_host, port=redis_port, db=1, decode_responses=True)
 API_KEY = os.getenv('API_KEY')
 GEOCODE_URL = os.getenv('GEOCODE_URL') #Using HERE API
 
@@ -74,6 +79,7 @@ def clean_post(text):
     except Exception as e:
         logger.error("Error cleaning text: %s", e)
         return None
+
 
 ### Applies our model and returns the value of its prediction ###
 ### The default label is "other" in case of failure ###
@@ -174,14 +180,20 @@ async def fetch_posts(client, queue, queries, since, until):
                 logger.debug("Mysterious aspect ratio error: %s", e)
             except Exception as e:
                 logger.error("Error fetching posts: %s", e)
+                logger.warning("Attempting to refresh session.")
+                try:
+                    await client.com.atproto.server.refresh_session()
+                    logger.info("Session refreshed successfully.")
+                except Exception as refresh_error:
+                    logger.error("Failed to refresh session: %s", refresh_error)
+                    await asyncio.sleep(30)
             await asyncio.sleep(API_TIMEOUT)
 
 
 def analyze_sentiment(text):
     """Analyzes the sentiment of the text and returns decimal value"""
-    blob = TextBlob(text)
-    polarity = blob.sentiment.polarity
-    return polarity
+    sentiment_score = analyzer.polarity_scores(text)['compound']
+    return sentiment_score
 
 ### NEW CHANGE: Function to load data into Redis from CSV 
 ### Pipelines converted data frame to Redis in batches
@@ -198,7 +210,7 @@ async def load_csv(filename):
         city = row.city
         mapping = {"lat": row.lat, "lng": row.lng}
         pipeline.hset(city, mapping=mapping)
-        logging.info(f"Added {city} to Redis with mapping: {mapping}")    
+        #logging.info(f"Added {city} to Redis with mapping: {mapping}")    
     pipeline.execute()
     logging.info(f"Finished processing {filename}.")
 
@@ -218,6 +230,12 @@ async def process_posts(session, queue):
         author = post.author.display_name
         handle = post.author.handle
 
+        ## PREFILTERING STUFF ##
+        # Adding some users we know tend to spam and are irrelevant to our use case:
+        bad_handles = ['simmersmiley.bsky.social', 'aquatron.bsky.social']
+        if handle in bad_handles:
+            continue
+
         ## Implementing a minimum word count
         # SKIP posts that do not meet the minimum word count
         min_words = 8
@@ -226,14 +244,24 @@ async def process_posts(session, queue):
 
         # Get the locations
         location = get_location(text)
+        if location is None: # SKIP posts that do not mention a location
+            continue
         sentiment = analyze_sentiment(text)
 
-        # Clean the text and get the prediction
-        cleaned = clean_post(text)
-        label = predict_post(cleaned)
-        
+        ## NEW FEATURE: let's also be able to query for cyclone and typhoon.
+        # if query was cyclone or typhoon, replace that word with hurricane
+        # this is because the model was trained on texts containing the word hurricane
+        if query is ('typhoon' or 'cyclone'):
+            mod_text = text.replace(query, 'hurricane')
+            cleaned = clean_post(text) # still store cleaned version from the original text
+            label = predict_post(clean_post(mod_text)) # but get the label from the modified text
+        else:
+            # Clean the text and get the prediction
+            cleaned = clean_post(text)
+            label = predict_post(cleaned)
+
         ### NEW CHANGE: Get the coordinates ###
-        norm_loc, lat, lng = await fetch_geocode(location, session, semaphore, redis_cli, GEOCODE_URL, API_KEY)
+        norm_loc, lat, lng = await fetch_geocode(session, location, semaphore, redis_cli, GEOCODE_URL, API_KEY)
 
         logger.info(
             "[%s] [%s: %s] %s (%s): \n%.150s%s",
@@ -271,6 +299,71 @@ async def process_posts(session, queue):
         queue.task_done()
 
 
+# adding some debug stuff for our token issue
+def inspect_jwt(token, name="Token"):
+    try:
+        payload = jwt.decode(token, options={"verify_signature": False})
+        exp = payload.get("exp", 0)
+        iat = payload.get("iat", 0)
+        now = int(time.time())
+
+        print(f"{name} info:")
+        print(f" - Issued at: {time.ctime(iat)}")
+        print(f" - Expires at: {time.ctime(exp)}")
+        print(f" - Time left: {exp - now} seconds")
+        if now >= exp:
+            print(f"OOPS. {name} is EXPIRED.")
+        else:
+            print(f"YAY. {name} is still valid.")
+        return payload
+    except Exception as e:
+        print(f"OOPS. Failed to decode {name}: {e}")
+        return None
+
+def get_session():
+    try:
+        with open('session.txt', encoding='UTF-8') as f:
+            return f.read()
+    except FileNotFoundError:
+        return None
+
+def save_session(session_string):
+    print(json.dumps(session_string, indent=2))
+    with open('session.txt', 'w', encoding='UTF-8') as f:
+        f.write(session_string)
+
+def on_session_change(event, session):
+    print('Session changed:', event, repr(session))
+    if event in (SessionEvent.CREATE, SessionEvent.REFRESH):
+        print('Saving changed session')
+        save_session(session.export())
+
+async def init_client(username, password):
+    client = AsyncClient()
+    client.on_session_change(on_session_change)
+
+    try:
+        session_string = get_session()
+        if session_string:
+            print('Reusing session')
+            await client.login(session_string=session_string)
+        else:
+            print('Creating new session')
+            await client.login(username, password)
+        logger.info("Successfully logged in...")
+    except ValueError:
+        logger.error("Username or password is incorrect")
+        exit()
+    except KeyError:
+        logger.error("Missing username or password")
+        exit()
+
+    # Now let's see if the tokens exists and are valid ..
+    inspect_jwt(client._session.access_jwt, name="Access Token")
+    inspect_jwt(client._session.refresh_jwt, name="Refresh Token") 
+    return client
+
+
 async def main():
     logger.info("Starting Bluesky monitoring script.")
 
@@ -302,16 +395,8 @@ async def main():
         ],
     )
     logging.getLogger("httpx").setLevel(logging.WARNING)
-
-    client = AsyncClient()
-    try:
-        await client.login(os.environ["BSKY_USER"], os.environ["BSKY_PASS"])
-    except ValueError:
-        logger.error("Username or password is incorrect")
-        exit()
-    except KeyError:
-        logger.error("Missing username or password")
-        exit()
+    logger.info("Starting the new AsyncClient")
+    client = await init_client(os.environ["BSKY_USER"], os.environ["BSKY_PASS"])
 
     if (os.environ.get("SINCE") and not os.environ.get("UNTIL")) or (
         os.environ.get("UNTIL") and not os.environ.get("SINCE")
@@ -340,7 +425,7 @@ async def main():
         )
         since = (datetime.now() - time_range).strftime("%Y-%m-%dT%H:%M:%SZ")  # CST
         until = ""
-    
+
     ### NEW CHANGE: Load CSV files into Redis if not already loaded ###
     if redis_cli.dbsize() < 60754:
         await asyncio.gather(
