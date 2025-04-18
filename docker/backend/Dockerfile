@@ -8,6 +8,8 @@ WORKDIR /app
 COPY requirements.txt ./
 
 # Install dependencies
+RUN apt update
+RUN apt install -y libgomp1
 RUN pip install --no-cache-dir -r requirements.txt
 RUN python -m spacy download en_core_web_sm
 
