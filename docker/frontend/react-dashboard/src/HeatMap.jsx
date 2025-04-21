@@ -38,7 +38,7 @@ const HeatMap = React.memo(({ urlQuery, selectedDisasterType }) => {
     const normalize = (value) => Math.min(Math.max(value, 0), 1);
 
     const points = coordinates.map((coord) => {
-      const rawIntensity = 1 - coord.sentiment_scaled;
+      const rawIntensity = 1 - coord.sentiment;
       return [coord.lat, coord.lng, normalize(rawIntensity)];
     });
     const style = getComputedStyle(document.documentElement);
