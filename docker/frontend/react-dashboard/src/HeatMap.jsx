@@ -4,74 +4,64 @@ import L from "leaflet";
 import "leaflet.heat";
 import useFetchCoordinates from "./useFetchCoordinates";
 
-const HeatMap = React.memo(({ urlQuery, selectedDisasterType }) => {
-  const [map, setMap] = useState(null);
+const HeatMap = ({ selectedDisasterType }) => {
+  const coordinates = useFetchCoordinates(selectedDisasterType); // ✅ always fetches based on prop
+  const [mapInstance, setMapInstance] = useState(null);
   const [heatLayer, setHeatLayer] = useState(null);
-  const coordinates = useFetchCoordinates(selectedDisasterType, urlQuery);
-  
-  // Normalize sentiment from [-1, 1] → [0, 1]
-  const normalizeSentiment = (value) => (value + 1) / 2;
-  
+
   useEffect(() => {
-    if (!map) {
-      const newMap = L.map("heatmap", {
-        center: [37.8, -96], // Center of the US
+    if (!mapInstance) {
+      const map = L.map("heatmap", {
+        center: [37.8, -96],
         zoom: 5,
         minZoom: 1,
-        maxZoom: 10,
+        maxZoom: 11,
         maxBounds: [
-          [-90, -180], // Southwest
-          [90, 180],   // Northeast
+          [-90, -180],
+          [90, 180],
         ],
         maxBoundsViscosity: 0.5,
       });
 
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(newMap);
-      setMap(newMap);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+      setMapInstance(map);
     }
-  }, [map]);
+  }, [mapInstance]);
 
   useEffect(() => {
-    console.log("HeatMap updated:", selectedDisasterType);
-    console.log("Coordinates for heatmap:", coordinates);
+    if (!mapInstance || coordinates.length === 0) return;
 
-    if (map && coordinates.length > 0) {
-      // Remove the previous heatmap layer if it exists
-      if (heatLayer) {
-        map.removeLayer(heatLayer);
-      }
-
-      // Normalize sentiment from [-1, 1] → [0, 1]
-      const points = coordinates.map((coord) => {
-        const normalizedIntensity = normalizeSentiment(coord.sentiment_scaled);
-        return [coord.lat, coord.lng, normalizedIntensity];
-      });
-
-      console.log("POINTS: ", points);
-
-      const style = getComputedStyle(document.documentElement)
-      
-      // Create the heatmap layer with the new data
-      const newHeatLayer = L.heatLayer(points, {
-        radius: 20,
-        blur: 5,
-        maxZoom: 4,
-        gradient: {
-          0.0: style.getPropertyValue('--purple'), // Purple — high sentiment (low intensity)
-          0.25: style.getPropertyValue('--green'), // Green — medium sentiment (low intensity)
-          0.5: style.getPropertyValue('--yellow'),  // Yellow — neutral
-          0.75: style.getPropertyValue('--orange'), // Orange — low sentiment (medium intensity)
-          1.0: style.getPropertyValue('--red')   // Red — low sentiment (high intensity)
-        }
-        
-      }).addTo(map);
-      setHeatLayer(newHeatLayer); // Update the state to keep track of the heatLayer
+    if (heatLayer) {
+      mapInstance.removeLayer(heatLayer);
     }
-  }, [map, coordinates, urlQuery, selectedDisasterType]);  // Trigger this effect when selectedDisasterType or coordinates change
 
-  return (
-    <div id="heatmap" className="mt-3" style={{ height: "250px", background: "lightgray" }}></div>
-  );
-});
+    const normalize = (value) => Math.min(Math.max(value, 0), 1);
+
+    const points = coordinates.map((coord) => {
+      const rawIntensity = 1 - coord.sentiment_scaled;
+      return [coord.lat, coord.lng, normalize(rawIntensity)];
+    });
+    const style = getComputedStyle(document.documentElement);
+    const newHeatLayer = L.heatLayer(points, {
+      radius: 20,
+      blur: 10,
+      maxZoom: 4,
+      gradient: {
+        0.0: style.getPropertyValue('--purple'), // Purple — high sentiment (low intensity)
+        0.25: style.getPropertyValue('--green'), // Green — medium sentiment (low intensity)
+        0.5: style.getPropertyValue('--yellow'),  // Yellow — neutral
+        0.75: style.getPropertyValue('--orange'), // Orange — low sentiment (medium intensity)
+        1.0: style.getPropertyValue('--red')   // Red — low sentiment (high intensity)
+      },
+    }).addTo(mapInstance);
+
+    setHeatLayer(newHeatLayer);
+
+    console.log("🟢 Heatmap updated with:", selectedDisasterType);
+    console.log("🟡 Plotted coordinates:", coordinates);
+  }, [mapInstance, coordinates, selectedDisasterType]); // 🔁 react to disasterType properly
+
+  return <div id="heatmap" className="mt-3" style={{ height: "250px", background: "lightgray" }}></div>;
+};
 
 export default HeatMap;
