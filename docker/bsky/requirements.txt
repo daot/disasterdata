@@ -1,7 +1,7 @@
 asyncio
 aiohttp
 python-dateutil
-atproto>=0.0.60
+atproto==0.0.59
 textblob
 requests
 python-dotenv

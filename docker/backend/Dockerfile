@@ -1,5 +1,5 @@
 # Use an official Python image
-FROM python:3.10-alpine
+FROM python:3.10-slim
 
 # Set the working directory
 WORKDIR /app
@@ -8,7 +8,10 @@ WORKDIR /app
 COPY requirements.txt ./
 
 # Install dependencies
+RUN apt update
+RUN apt install -y libgomp1
 RUN pip install --no-cache-dir -r requirements.txt
+RUN python -m spacy download en_core_web_sm
 
 # Copy necessary files
 COPY data_processor.py location_cache.db routes.py ./
