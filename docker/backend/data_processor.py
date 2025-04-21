@@ -168,10 +168,11 @@ class DataProcessor:
             coordinates = kwargs.get("coordinates")
             if coordinates:
                 df = df[df["lat"].notna() & df["lng"].notna() & (df['lat'] != 0) & (df['lng'] != 0)]
-        
-
-        df['sentiment'] = pd.to_numeric(df['sentiment'], errors='coerce')
-        df['sentiment_scaled'] = (df['sentiment'] - df['sentiment'].min()) / (df['sentiment'].max() - df['sentiment'].min())
+        ### Figured we don't need this anymore since vader is better with the sentiment analysis
+        ### Kept it just in case ###
+        #if sentiment:
+            #df['sentiment'] = pd.to_numeric(df['sentiment'], errors='coerce')
+            #df['sentiment_scaled'] = (df['sentiment'] - df['sentiment'].min()) / (df['sentiment'].max() - df['sentiment'].min())
         return df
 
     def validate_date_range(self, start_date, end_date):
