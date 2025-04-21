@@ -4,8 +4,8 @@ import L from "leaflet";
 import "leaflet.heat";
 import useFetchCoordinates from "./useFetchCoordinates";
 
-const HeatMap = ({ selectedDisasterType }) => {
-  const coordinates = useFetchCoordinates(selectedDisasterType); // ✅ always fetches based on prop
+const HeatMap = React.memo(({ urlQuery, selectedDisasterType }) => {
+  const coordinates = useFetchCoordinates(selectedDisasterType, urlQuery); // ✅ always fetches based on prop
   const [mapInstance, setMapInstance] = useState(null);
   const [heatLayer, setHeatLayer] = useState(null);
 
@@ -62,6 +62,6 @@ const HeatMap = ({ selectedDisasterType }) => {
   }, [mapInstance, coordinates, selectedDisasterType]); // 🔁 react to disasterType properly
 
   return <div id="heatmap" className="mt-3" style={{ height: "250px", background: "lightgray" }}></div>;
-};
+});
 
 export default HeatMap;
