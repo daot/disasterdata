@@ -168,11 +168,10 @@ body {
 }
 
 #main-container {
-    height: 100vh;
+    min-height: 100vh;
     max-width: var(--container-max-width);
     padding-top: var(--container-padding);
     padding-bottom: var(--container-padding);
-    min-height: 100%;
     box-sizing: border-box;
 }
 
