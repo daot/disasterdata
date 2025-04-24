@@ -204,7 +204,7 @@ body {
 
 @media (max-width: 1199.98px){
     :root {
-        --container-max-width: 90%;
+        --container-max-width: clamp(70%, calc(100% - 300px), 90%);
     }
     
     #linechart-l {
