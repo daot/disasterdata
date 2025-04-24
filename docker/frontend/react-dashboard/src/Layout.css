@@ -201,53 +201,6 @@ body {
     opacity: 0.8;
 }
 
-@media
-only screen and (-webkit-min-device-pixel-ratio: 1.25),
-only screen and ( min--moz-device-pixel-ratio: 1.25),
-only screen and ( -o-min-device-pixel-ratio: 1.25/1),
-only screen and ( min-device-pixel-ratio: 1.25),
-only screen and ( min-resolution: 200dpi),
-only screen and ( min-resolution: 1.25dppx)
-{
-    :root {
-        /* Adjust sizes for high DPI displays */
-        --base-font-size: 14px;
-        --button-font-size: 11px;
-        --container-max-width: 85%;
-        --container-padding: 30px; /* More padding on high-DPI displays */
-    }
-    
-    /* Ensure content is fully visible */
-    body {
-        height: auto !important;
-        min-height: 100%;
-    }
-    
-    #root {
-        height: auto !important;
-        min-height: 100%;
-    }
-    
-    #main-container {
-        height: auto !important;
-        min-height: 100%;
-        padding-top: 30px;
-        padding-bottom: 30px;
-    }
-    
-    .card-title {
-        font-size: 1.1rem !important;
-    }
-    
-    #current-time, #current-disaster, #danger-level {
-        font-size: 1.1rem;
-    }
-    
-    /* Add bottom margin to the last row to prevent cut-off */
-    .container-fluid > .row:last-child {
-        margin-bottom: 30px;
-    }
-}
 
 @media (max-width: 1199.98px){
     :root {
