@@ -269,14 +269,22 @@ class DataProcessor:
             return validation
         start_date, end_date = validation
 
-        #filter by date range and disaster type
+        time_diff = end_date - start_date
+        if time_diff.total_seconds() <= 3600:
+            resample_freq = "T"
+        elif time_diff.total_seconds() <= 86400:
+            resample_freq = "H"
+        else:
+            resample_freq = "D"
+
         df = self.filter_data(since=start_date, latest=end_date, label=disaster_type)
         if df.empty:
             return {"error": "No posts found for the given date range"}
-        posts_per_day = df.resample("D", on="timestamp").size().reset_index(name="post_count")
-        posts_per_day["timestamp"] = posts_per_day["timestamp"].dt.strftime("%Y-%m-%d")
-        
-        return posts_per_day.to_dict(orient="records")
+
+        posts = df.resample(resample_freq, on="timestamp").size().reset_index(name="post_count")
+        posts["timestamp"] = posts["timestamp"].dt.strftime("%Y-%m-%d %H:%M" if resample_freq in ["T", "H"] else "%Y-%m-%d")
+
+        return posts.to_dict(orient="records")
 
     def fetch_top_disaster_location(self, start_date=None, end_date=None):
         """Gets the most popular disaster type, location, and danger level within the past 24 hours"""
