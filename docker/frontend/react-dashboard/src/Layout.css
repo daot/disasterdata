@@ -200,6 +200,26 @@ body {
     opacity: 0.8;
 }
 
+@media (max-width: 588px){
+    div.row:nth-child(1) > div:nth-child(1) > div:nth-child(1) {
+        display: block !important;
+    }
+}
+
+@media (max-width: 767.98px){
+    div.row:nth-child(1) > div:nth-child(1) > div:nth-child(1) {
+        flex-direction: column;
+    }
+
+    div.row:nth-child(1) > div:nth-child(1) > div:nth-child(1) > div:nth-child(2) {
+        margin: 10px 0;
+    }
+
+    .input-group {
+        padding-left: 0;
+        align-self: end;
+    }
+}
 
 @media (max-width: 1199.98px){
     :root {
