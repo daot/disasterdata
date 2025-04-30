@@ -168,11 +168,9 @@ class DataProcessor:
             coordinates = kwargs.get("coordinates")
             if coordinates:
                 df = df[df["lat"].notna() & df["lng"].notna() & (df['lat'] != 0) & (df['lng'] != 0)]
-        ### Figured we don't need this anymore since vader is better with the sentiment analysis
-        ### Kept it just in case ###
-        #if sentiment:
-            #df['sentiment'] = pd.to_numeric(df['sentiment'], errors='coerce')
-            #df['sentiment_scaled'] = (df['sentiment'] - df['sentiment'].min()) / (df['sentiment'].max() - df['sentiment'].min())
+
+        df['sentiment'] = pd.to_numeric(df['sentiment'], errors='coerce')
+        df['sentiment_scaled'] = (df['sentiment'] - df['sentiment'].min()) / (df['sentiment'].max() - df['sentiment'].min())
         return df
 
     def validate_date_range(self, start_date, end_date):
@@ -273,7 +271,7 @@ class DataProcessor:
         if time_diff.total_seconds() <= 3600:
             resample_freq = "T"
         elif time_diff.total_seconds() <= 86400:
-            resample_freq = "H"
+            resample_freq = "h"
         else:
             resample_freq = "D"
 
@@ -282,7 +280,7 @@ class DataProcessor:
             return {"error": "No posts found for the given date range"}
 
         posts = df.resample(resample_freq, on="timestamp").size().reset_index(name="post_count")
-        posts["timestamp"] = posts["timestamp"].dt.strftime("%Y-%m-%d %H:%M" if resample_freq in ["T", "H"] else "%Y-%m-%d")
+        posts["timestamp"] = posts["timestamp"].dt.strftime("%Y-%m-%d %H:%M" if resample_freq in ["T", "h"] else "%Y-%m-%d")
 
         return posts.to_dict(orient="records")
 
