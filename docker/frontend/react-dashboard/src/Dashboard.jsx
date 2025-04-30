@@ -165,7 +165,7 @@ const Dashboard = () => {
         <Col md={3} className="flex-shrink-1">
           <Card className="shadow-sm" style={{ height: "100px"}}>
             <Card.Body className="d-flex flex-column justify-content-center align-items-start">
-              <Card.Title id="current-time-title">Dashboard</Card.Title>
+              <Card.Title id="current-time-title">DisasterData</Card.Title>
               <div id="current-time"> {`${currentTime}`} </div>
             </Card.Body>
           </Card>
