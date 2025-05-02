@@ -91,8 +91,9 @@ const Dashboard = () => {
     <div className="m-0">
       {/* Filter Row */}
     <Container fluid>
-    <Row className="m-0 d-flex">
-      <Card className="shadow-sm">
+    <Row className="m-0 d-flex" style={{justifyContent: "space-between", alignItems: "end"}}>
+      <h1 style={{width: "auto"}}>DisasterData</h1>
+      <Card className="shadow-sm" style={{width: "auto"}}>
         <Card.Body className="d-flex justify-content-center">
           <Card.Title className="m-0" style={{paddingRight: "12px"}}>Filter By:</Card.Title>
           <ButtonGroup className="button-group">
@@ -165,7 +166,7 @@ const Dashboard = () => {
         <Col md={3} className="flex-shrink-1">
           <Card className="shadow-sm" style={{ height: "100px"}}>
             <Card.Body className="d-flex flex-column justify-content-center align-items-start">
-              <Card.Title id="current-time-title">DisasterData</Card.Title>
+              <Card.Title id="current-time-title">Current Time</Card.Title>
               <div id="current-time"> {`${currentTime}`} </div>
             </Card.Body>
           </Card>
